@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS Welcome
+Name[ru]=Добро пожаловать в ARMOS
+Comment=Show the ARMOS welcome window on first login and in live sessions
+Comment[ru]=Показывать окно приветствия при первом входе и в live-сеансе
+Exec=armos-welcome
+Icon=armos-logo
+Terminal=false
+NoDisplay=true
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true

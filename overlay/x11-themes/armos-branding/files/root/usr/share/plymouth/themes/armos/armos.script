@@ -1,0 +1,12 @@
+wallpaper_image = Image("background.png");
+screen_width = Window.GetWidth();
+screen_height = Window.GetHeight();
+resized = wallpaper_image.Scale(screen_width, screen_height);
+wallpaper_sprite = Sprite(resized);
+wallpaper_sprite.SetZ(-100);
+
+logo_image = Image("logo.png");
+logo_sprite = Sprite(logo_image);
+logo_sprite.SetX(screen_width / 2 - logo_image.GetWidth() / 2);
+logo_sprite.SetY(screen_height / 2 - logo_image.GetHeight() / 2);
+logo_sprite.SetZ(10);

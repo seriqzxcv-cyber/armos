@@ -1,0 +1,211 @@
+#!/usr/bin/env python3
+"""ARMOS Desklet — minimal desktop widget: clock, date, CPU/RAM and uptime.
+
+Deliberately restrained: graphite card, 1px hairline, small radius, one muted
+blue accent. No glow, no gradients, no neon.
+"""
+
+import datetime
+import os
+import sys
+
+sys.path.insert(0, "/usr/lib/armos")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk  # noqa: E402
+
+ACCENT = "#4C8DFF"
+BORDER = "#2A2D33"
+SURFACE = "rgba(18, 20, 24, 0.88)"
+TEXT = "#E6EAF0"
+MUTED = "#8B929D"
+TRACK = "#22262C"
+
+CSS = f"""
+window {{ background-color: transparent; }}
+.desklet-card {{
+    background-color: {SURFACE};
+    border: 1px solid {BORDER};
+    border-radius: 12px;
+    padding: 14px 18px 12px 18px;
+}}
+.brand {{ color: {MUTED}; font-size: 10px; font-weight: 600; letter-spacing: 2px; }}
+.clock {{ color: {TEXT}; font-size: 34px; font-weight: 300; }}
+.date {{ color: {MUTED}; font-size: 12px; }}
+.uptime {{ color: {MUTED}; font-size: 10px; }}
+.metric-name {{ color: {MUTED}; font-size: 10px; }}
+.metric-value {{ color: {TEXT}; font-size: 10px; }}
+progressbar {{ min-height: 4px; }}
+progressbar trough {{ background-color: {TRACK}; border-radius: 2px; min-height: 4px; }}
+progressbar progress {{ background-color: {ACCENT}; border-radius: 2px; min-height: 4px; }}
+"""
+
+MONTHS = (
+    "января", "февраля", "марта", "апреля", "мая", "июня",
+    "июля", "августа", "сентября", "октября", "ноября", "декабря",
+)
+WEEKDAYS = ("пн", "вт", "ср", "чт", "пт", "сб", "вс")
+
+
+def _read_cpu():
+    with open("/proc/stat", "r", encoding="ascii") as fh:
+        fields = fh.readline().split()[1:]
+    values = [int(v) for v in fields]
+    idle = values[3] + (values[4] if len(values) > 4 else 0)
+    return sum(values), idle
+
+
+def _read_mem():
+    total = available = 0
+    with open("/proc/meminfo", "r", encoding="ascii") as fh:
+        for line in fh:
+            if line.startswith("MemTotal:"):
+                total = int(line.split()[1])
+            elif line.startswith("MemAvailable:"):
+                available = int(line.split()[1])
+    return total, available
+
+
+def _read_uptime():
+    with open("/proc/uptime", "r", encoding="ascii") as fh:
+        return int(float(fh.readline().split()[0]))
+
+
+def _metric_row(name):
+    box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    label = Gtk.Label(label=name, xalign=0)
+    label.get_style_context().add_class("metric-name")
+    value = Gtk.Label(label="0%", xalign=1)
+    value.get_style_context().add_class("metric-value")
+    value.set_width_chars(4)
+    bar = Gtk.ProgressBar()
+    bar.set_hexpand(True)
+    bar.set_valign(Gtk.Align.CENTER)
+    box.pack_start(label, False, False, 0)
+    box.pack_start(bar, True, True, 0)
+    box.pack_start(value, False, False, 0)
+    return box, bar, value
+
+
+class Desklet(Gtk.Window):
+    def __init__(self):
+        super().__init__(type=Gtk.WindowType.TOPLEVEL)
+        self.set_decorated(False)
+        self.set_resizable(False)
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        self.set_accept_focus(False)
+        self.set_focus_on_map(False)
+        self.set_keep_below(True)
+        self.set_type_hint(Gdk.WindowTypeHint.UTILITY)
+        self.set_app_paintable(True)
+        self.set_title("ARMOS Desklet")
+
+        screen = self.get_screen()
+        visual = screen.get_rgba_visual()
+        if visual is not None:
+            self.set_visual(visual)
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS.encode("utf-8"))
+        Gtk.StyleContext.add_provider_for_screen(
+            screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        card.get_style_context().add_class("desklet-card")
+        self.add(card)
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        logo_path = "/usr/share/pixmaps/armos-logo-128.png"
+        if os.path.exists(logo_path):
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+                    logo_path, 16, 16, True
+                )
+                header.pack_start(Gtk.Image.new_from_pixbuf(pixbuf), False, False, 0)
+            except Exception:
+                pass
+        brand = Gtk.Label(label="ARMOS · GEN", xalign=0)
+        brand.get_style_context().add_class("brand")
+        header.pack_start(brand, False, False, 0)
+        card.pack_start(header, False, False, 0)
+
+        self.clock = Gtk.Label(label="--:--", xalign=0)
+        self.clock.get_style_context().add_class("clock")
+        card.pack_start(self.clock, False, False, 0)
+
+        self.date = Gtk.Label(label="", xalign=0)
+        self.date.get_style_context().add_class("date")
+        card.pack_start(self.date, False, False, 0)
+
+        card.pack_start(Gtk.Separator(), False, False, 8)
+
+        cpu_box, self.cpu_bar, self.cpu_value = _metric_row("ЦП")
+        card.pack_start(cpu_box, False, False, 2)
+        ram_box, self.ram_bar, self.ram_value = _metric_row("ОЗУ")
+        card.pack_start(ram_box, False, False, 2)
+
+        self.uptime = Gtk.Label(label="", xalign=0)
+        self.uptime.get_style_context().add_class("uptime")
+        card.pack_start(self.uptime, False, False, 6)
+
+        self._cpu_prev = _read_cpu()
+        self.show_all()
+        GLib.idle_add(self._place)
+        GLib.timeout_add(1000, self._tick)
+
+    def _place(self):
+        geometry = self.get_screen().get_monitor_geometry(0)
+        width, height = self.get_size()
+        margin = 28
+        self.move(
+            geometry.x + geometry.width - width - margin,
+            geometry.y + margin,
+        )
+        return False
+
+    def _tick(self):
+        now = datetime.datetime.now()
+        self.clock.set_text(now.strftime("%H:%M"))
+        self.date.set_text(
+            "{} , {} {}".format(
+                WEEKDAYS[now.weekday()], now.day, MONTHS[now.month - 1]
+            ).replace(" ,", ",")
+        )
+
+        total, idle = _read_cpu()
+        prev_total, prev_idle = self._cpu_prev
+        dt = max(total - prev_total, 1)
+        di = max(idle - prev_idle, 0)
+        cpu = max(0.0, min(100.0, 100.0 * (dt - di) / dt))
+        self._cpu_prev = (total, idle)
+
+        mem_total, mem_avail = _read_mem()
+        ram = 0.0 if mem_total <= 0 else 100.0 * (mem_total - mem_avail) / mem_total
+
+        self.cpu_bar.set_fraction(cpu / 100.0)
+        self.cpu_value.set_text("{:.0f}%".format(cpu))
+        self.ram_bar.set_fraction(ram / 100.0)
+        self.ram_value.set_text("{:.0f}%".format(ram))
+
+        secs = _read_uptime()
+        days, rem = divmod(secs, 86400)
+        hours, rem = divmod(rem, 3600)
+        minutes = rem // 60
+        if days:
+            up = "аптайм {} д {} ч".format(days, hours)
+        else:
+            up = "аптайм {} ч {} мин".format(hours, minutes)
+        self.uptime.set_text(up)
+        return True
+
+
+if __name__ == "__main__":
+    app = Desklet()
+    app.connect("destroy", Gtk.main_quit)
+    Gtk.main()

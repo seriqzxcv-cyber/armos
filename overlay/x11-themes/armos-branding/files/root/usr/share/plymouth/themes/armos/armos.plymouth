@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=ARMOS
+Description=ARMOS boot splash
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/armos
+ScriptFile=/usr/share/plymouth/themes/armos/armos.script

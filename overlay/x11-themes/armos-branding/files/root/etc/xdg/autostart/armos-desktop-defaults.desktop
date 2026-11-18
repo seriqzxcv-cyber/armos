@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS desktop defaults
+Comment=Apply the ARMOS wallpaper and keyboard layout
+Exec=armos-desktop-defaults
+Terminal=false
+NoDisplay=true
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true

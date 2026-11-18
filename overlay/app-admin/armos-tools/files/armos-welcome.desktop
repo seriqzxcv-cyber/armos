@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS Welcome
+Name[ru]=Добро пожаловать в ARMOS
+Comment=Welcome, installation and documentation
+Comment[ru]=Приветствие, установка и документация
+Exec=armos-welcome
+Icon=armos-logo
+Terminal=false
+StartupNotify=true
+Categories=System;
+Keywords=armos;welcome;install;

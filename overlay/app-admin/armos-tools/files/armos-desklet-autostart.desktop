@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS Desklet
+Name[ru]=Виджет ARMOS
+Comment=Clock, date, CPU/RAM and uptime widget in the ARMOS style
+Comment[ru]=Виджет с часами, датой, ЦП/ОЗУ и аптаймом в стиле ARMOS
+Exec=armos-desklet
+Icon=armos-logo
+Terminal=false
+NoDisplay=true
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3

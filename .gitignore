@@ -1,0 +1,14 @@
+# Build artifacts
+build/rootfs/
+build/cache/
+build/*.img
+out/*
+!out/.gitkeep
+
+# Editor / OS noise
+*.swp
+*~
+.DS_Store
+
+# Rendered assets
+assets/generated/

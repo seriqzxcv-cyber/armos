@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""ARMOS Welcome — first-run launcher for the live session."""
+
+import os
+import sys
+
+sys.path.insert(0, "/usr/lib/armos")
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
+
+import armos_common as common  # noqa: E402
+
+
+def action_button(title, subtitle, icon, callback, suggested=False):
+    box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+    image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.LARGE_TOOLBAR)
+    box.pack_start(image, False, False, 0)
+    text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    label = Gtk.Label(label=title, xalign=0)
+    label.get_style_context().add_class("tile-title")
+    sub = Gtk.Label(label=subtitle, xalign=0)
+    sub.get_style_context().add_class("tile-subtitle")
+    text.pack_start(label, False, False, 0)
+    text.pack_start(sub, False, False, 0)
+    box.pack_start(text, True, True, 0)
+    button = Gtk.Button()
+    button.add(box)
+    if suggested:
+        button.get_style_context().add_class("suggested")
+    button.connect("clicked", callback)
+    return button
+
+
+class Welcome(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.armos.Welcome")
+
+    def do_activate(self):
+        common.apply_theme()
+        live = common.is_live()
+        marker = os.path.expanduser("~/.config/armos/welcome-shown")
+        if not live and os.path.exists(marker):
+            self.quit()
+            return
+
+        window = Gtk.ApplicationWindow(application=self, title="ARMOS")
+        window.set_default_size(660, 540)
+        window.set_position(Gtk.WindowPosition.CENTER)
+
+        def mark_shown(*_):
+            try:
+                os.makedirs(os.path.dirname(marker), exist_ok=True)
+                open(marker, "w").close()
+            except OSError:
+                pass
+
+        window.connect("destroy", mark_shown)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        outer.set_border_width(28)
+        window.add(outer)
+
+        logo_path = common.logo_path()
+        if logo_path:
+            logo = Gtk.Image.new_from_file(logo_path)
+        else:
+            logo = Gtk.Image.new_from_icon_name("applications-system", Gtk.IconSize.DIALOG)
+        logo.set_halign(Gtk.Align.START)
+        outer.pack_start(logo, False, False, 0)
+
+        title = Gtk.Label(xalign=0)
+        title.set_markup("Добро пожаловать в <b>ARMOS 1.0</b>")
+        title.get_style_context().add_class("title")
+        outer.pack_start(title, False, False, 0)
+
+        subtitle = Gtk.Label(
+            label="Source-based Linux с рабочим столом XFCE. "
+            "Всё готово к работе — выберите действие.",
+            xalign=0,
+        )
+        subtitle.set_line_wrap(True)
+        subtitle.get_style_context().add_class("subtitle")
+        outer.pack_start(subtitle, False, False, 0)
+
+        grid = Gtk.Grid(column_spacing=12, row_spacing=12)
+        grid.set_column_homogeneous(True)
+        outer.pack_start(grid, True, True, 0)
+
+        def install(_):
+            if not common.launch(["calamares"]):
+                common.message(window, "Установщик Calamares не найден.", Gtk.MessageType.ERROR)
+
+        buttons = []
+        if live:
+            buttons.append(
+                action_button(
+                    "Установить ARMOS",
+                    "Установка на диск через Calamares",
+                    "system-software-install",
+                    install,
+                    suggested=True,
+                )
+            )
+        buttons += [
+            action_button(
+                "Центр ARMOS",
+                "Настройки, драйверы, система",
+                "preferences-system",
+                lambda *_: common.launch(["armos-center"]),
+            ),
+            action_button(
+                "Магазин приложений",
+                "Каталог программ ARMOS",
+                "system-software-install",
+                lambda *_: common.launch(["armos-store"]),
+            ),
+            action_button(
+                "Обновления",
+                "Проверка и установка обновлений",
+                "system-software-update",
+                lambda *_: common.launch(["armos-updater"]),
+            ),
+            action_button(
+                "Документация",
+                "Руководства и заметки о сборке",
+                "help-browser",
+                lambda *_: common.launch(["xdg-open", "/usr/share/doc/armos"]),
+            ),
+            action_button(
+                "Закрыть",
+                "Продолжить работу с рабочим столом",
+                "window-close",
+                lambda *_: window.destroy(),
+            ),
+        ]
+
+        for index, button in enumerate(buttons):
+            button.set_hexpand(True)
+            button.set_vexpand(True)
+            grid.attach(button, index % 2, index // 2, 1, 1)
+
+        footer = Gtk.Label(
+            label="ARMOS 1.0 «GEN» • source-based Linux • Gentoo + OpenRC",
+            xalign=0,
+        )
+        footer.get_style_context().add_class("subtitle")
+        outer.pack_start(footer, False, False, 0)
+
+        window.show_all()
+
+
+if __name__ == "__main__":
+    sys.exit(Welcome().run(sys.argv))

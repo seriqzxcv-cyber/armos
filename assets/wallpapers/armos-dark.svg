@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3840" height="2160" viewBox="0 0 3840 2160" role="img" aria-label="ARMOS dark minimalist wallpaper">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#06080B"/>
+      <stop offset="0.55" stop-color="#0C1016"/>
+      <stop offset="1" stop-color="#141B24"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.72" cy="0.22" r="0.62">
+      <stop offset="0" stop-color="#4CC2FF" stop-opacity="0.18"/>
+      <stop offset="0.55" stop-color="#4CC2FF" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#4CC2FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="vignette" cx="0.5" cy="0.52" r="0.75">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.55"/>
+    </radialGradient>
+    <pattern id="grid" width="120" height="120" patternUnits="userSpaceOnUse">
+      <path d="M120 0H0V120" fill="none" stroke="#A8B6C9" stroke-width="1" opacity="0.055"/>
+    </pattern>
+  </defs>
+
+  <rect width="3840" height="2160" fill="url(#bg)"/>
+  <rect width="3840" height="2160" fill="url(#grid)"/>
+  <rect width="3840" height="2160" fill="url(#glow)"/>
+
+  <!-- orbital geometry -->
+  <g fill="none" stroke="#4CC2FF">
+    <ellipse cx="2920" cy="540" rx="760" ry="300" stroke-width="3" opacity="0.28"
+             transform="rotate(-18 2920 540)"/>
+    <ellipse cx="2920" cy="540" rx="980" ry="390" stroke-width="2" opacity="0.14"
+             transform="rotate(-18 2920 540)"/>
+    <ellipse cx="1080" cy="1780" rx="620" ry="240" stroke-width="2" opacity="0.12"
+             transform="rotate(14 1080 1780)"/>
+  </g>
+  <g fill="none" stroke="#DCE6F2">
+    <path d="M0 1450 C 820 1320, 1420 1620, 2080 1500 S 3300 1280, 3840 1400"
+          stroke-width="2" opacity="0.10"/>
+    <path d="M0 1520 C 900 1390, 1500 1690, 2160 1570 S 3380 1350, 3840 1470"
+          stroke-width="1" opacity="0.06"/>
+  </g>
+
+  <circle cx="2920" cy="540" r="10" fill="#4CC2FF" opacity="0.9"/>
+  <circle cx="2920" cy="540" r="26" fill="none" stroke="#4CC2FF" stroke-width="2" opacity="0.35"/>
+
+  <rect width="3840" height="2160" fill="url(#vignette)"/>
+</svg>

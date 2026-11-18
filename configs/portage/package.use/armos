@@ -1,0 +1,25 @@
+# ARMOS package USE flags
+sys-auth/elogind pam policykit
+sys-auth/polkit elogind -gtk -introspection
+net-misc/networkmanager -modemmanager -introspection -bluetooth
+net-wireless/wpa_supplicant -ap -gui -mesh -p2p
+net-wireless/bluez -cups
+sys-fs/btrfs-progs -man
+x11-misc/lightdm gtk
+x11-misc/lightdm-gtk-greeter branding
+app-admin/calamares livecd
+media-video/pipewire sound-server
+dev-libs/libisoburn frontend
+www-client/firefox-bin pulseaudio
+app-office/libreoffice cups
+media-video/vlc ffmpeg dvd bluray
+media-libs/mesa vaapi vdpau vulkan
+x11-libs/gtk+ cups
+dev-python/pillow -truetype
+sys-boot/grub mount truetype
+sys-kernel/installkernel dracut
+sys-boot/plymouth gtk
+# pipewire's "ffmpeg" USE requires "extra"; audio path does not need it.
+media-video/pipewire -ffmpeg
+# XFCE panel dbusmenu support
+dev-libs/libdbusmenu gtk3

@@ -1,0 +1,27 @@
+---
+componentName: armos
+
+strings:
+    productName: ARMOS
+    shortProductName: ARMOS
+    version: 1.0 "GEN"
+    shortVersion: "1.0"
+    versionedName: ARMOS 1.0 "GEN"
+    shortVersionedName: ARMOS 1.0
+    bootloaderEntryName: ARMOS
+    productUrl: https://armos.local/
+    supportUrl: https://armos.local/support/
+    knownIssuesUrl: https://armos.local/bugs/
+    releaseNotesUrl: https://armos.local/releases/1.0/
+
+images:
+    productLogo: "productLogo.png"
+    productIcon: "productIcon.png"
+    productWelcome: "productWelcome.png"
+
+style:
+    sidebarBackground: "#1B1B1B"
+    sidebarText: "#E6E6E6"
+    sidebarTextSelect: "#4C8DFF"
+    sidebarTextHighlight: "#4C8DFF"
+    sidebarTextHighlightText: "#FFFFFF"

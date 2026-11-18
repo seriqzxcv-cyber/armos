@@ -1,0 +1,114 @@
+/* ARMOS 1.0 "GEN" — neutral dark GTK3 overrides.
+ * Windows 11 / macOS inspired: neutral graphite surfaces, 1px hairlines,
+ * small radii, one restrained blue accent used only where it means something. */
+
+@define-color theme_selected_bg_color #4C8DFF;
+@define-color theme_selected_fg_color #FFFFFF;
+@define-color theme_focus_bg_color #4C8DFF;
+@define-color theme_focus_fg_color #FFFFFF;
+@define-color accent_color #4C8DFF;
+@define-color accent_bg_color #4C8DFF;
+@define-color accent_fg_color #FFFFFF;
+@define-color link_color #6AA5FF;
+
+selection,
+*:selected {
+    background-color: #4C8DFF;
+    color: #FFFFFF;
+}
+
+check:checked,
+radio:checked,
+switch:checked {
+    background-color: #4C8DFF;
+    border-color: #4C8DFF;
+}
+
+progressbar progress,
+levelbar block.filled {
+    background-color: #4C8DFF;
+}
+
+link,
+*:link {
+    color: #6AA5FF;
+}
+
+/* Thin 1px focus ring instead of a glow. */
+*:focus {
+    outline: 1px solid alpha(#4C8DFF, 0.85);
+    outline-offset: -1px;
+}
+
+/* ---- Structure: hairline separations, small radii, no gradients ---- */
+
+headerbar,
+.titlebar {
+    background-image: none;
+    background-color: #16181D;
+    border-bottom: 1px solid #2A2D33;
+    box-shadow: none;
+    min-height: 36px;
+}
+
+/* Titlebar buttons stay flat until hovered. */
+headerbar button.titlebutton {
+    background-image: none;
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    box-shadow: none;
+}
+headerbar button.titlebutton:hover {
+    background-color: #24272E;
+    border-color: #33373F;
+}
+headerbar button.titlebutton.close:hover {
+    background-color: #B4443C;
+    border-color: #B4443C;
+    color: #FFFFFF;
+}
+
+menu,
+.menu,
+popover,
+popover.background {
+    background-color: #1B1E24;
+    border: 1px solid #2A2D33;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px alpha(#000000, 0.45);
+}
+
+tooltip,
+tooltip.background {
+    background-color: #22252B;
+    color: #E6EAF0;
+    border: 1px solid #33373F;
+    border-radius: 6px;
+}
+
+scrollbar slider {
+    background-color: #3A3E46;
+    border-radius: 4px;
+    min-width: 6px;
+    min-height: 6px;
+}
+scrollbar slider:hover {
+    background-color: #4C8DFF;
+}
+
+/* ---- XFCE panel: graphite bar with one hairline on top ---- */
+
+.xfce4-panel {
+    border-top: 1px solid #2A2D33;
+}
+.xfce4-panel button {
+    border-radius: 6px;
+    box-shadow: none;
+    background-image: none;
+}
+.xfce4-panel .tasklist button:active {
+    background-color: alpha(#4C8DFF, 0.16);
+    border-bottom: 2px solid #4C8DFF;
+    border-radius: 6px 6px 0 0;
+}

@@ -1,0 +1,79 @@
+#!/bin/sh
+# Apply ARMOS desktop defaults on first login.
+set -eu
+
+image=/usr/share/backgrounds/armos/armos-gen-4k.png
+[ -f "$image" ] || exit 0
+command -v xfconf-query >/dev/null 2>&1 || exit 0
+
+# Xfce 4.20 addresses backdrops by monitor *connector* (Virtual-1, VGA-1,
+# HDMI-A-1, ...), not by the legacy "monitor0" key. Collect every connected
+# output and write the wallpaper for all of them, plus the legacy keys for
+# compatibility with older desktops.
+connectors=""
+if command -v xrandr >/dev/null 2>&1; then
+    connectors=$(xrandr --query 2>/dev/null | awk '/ connected/ { print $1 }' || true)
+fi
+# The live image has no xrandr; sysfs exposes the same connector names.
+if [ -z "$connectors" ]; then
+    for drm in /sys/class/drm/card*-*; do
+        [ -f "$drm/status" ] || continue
+        [ "$(cat "$drm/status" 2>/dev/null)" = "connected" ] || continue
+        connector=${drm##*/}
+        connector=${connector#*-}
+        connectors="$connectors $connector"
+    done
+fi
+
+set_prop() {
+    prop=$1
+    type=$2
+    value=$3
+    if ! xfconf-query -c xfce4-desktop -p "$prop" -s "$value" 2>/dev/null; then
+        xfconf-query -c xfce4-desktop -p "$prop" -n -t "$type" -s "$value" 2>/dev/null || true
+    fi
+}
+
+apply_wallpaper() {
+    prefix=$1
+    set_prop "$prefix/last-image" string "$image"
+    set_prop "$prefix/image-style" int 5
+}
+
+# Wait until xfdesktop has created its backdrop channel (up to 30 s).
+i=0
+while [ "$i" -lt 30 ]; do
+    props=$(xfconf-query -c xfce4-desktop -l 2>/dev/null | grep '/last-image$' || true)
+    [ -n "$props" ] && break
+    i=$((i + 1))
+    sleep 1
+done
+
+for prop in $props; do
+    apply_wallpaper "${prop%/last-image}"
+done
+
+for connector in $connectors; do
+    for workspace in 0 1 2 3; do
+        apply_wallpaper "/backdrop/screen0/monitor${connector}/workspace${workspace}"
+    done
+done
+
+apply_wallpaper /backdrop/screen0/monitor0/workspace0
+
+# Keyboard layout: us,ru with Alt+Shift.
+xfconf-query -c keyboard-layout -p /Default/XkbDisable -n -t bool -s false 2>/dev/null || true
+xfconf-query -c keyboard-layout -p /Default/XkbLayout -n -t string -s "us,ru" 2>/dev/null || true
+xfconf-query -c keyboard-layout -p /Default/XkbVariant -n -t string -s "," 2>/dev/null || true
+xfconf-query -c keyboard-layout -p /Default/XkbOptions -n -t string \
+    -s "grp:alt_shift_toggle,grp_led:scroll" 2>/dev/null || true
+
+# Cursor: modern Adwaita arrow instead of the legacy X11 core cursor.
+xfconf-query -c xsettings -p /Gtk/CursorThemeName -s Adwaita 2>/dev/null \
+    || xfconf-query -c xsettings -p /Gtk/CursorThemeName -n -t string \
+        -s Adwaita 2>/dev/null || true
+xfconf-query -c xsettings -p /Gtk/CursorThemeSize -s 24 2>/dev/null \
+    || xfconf-query -c xsettings -p /Gtk/CursorThemeSize -n -t int \
+        -s 24 2>/dev/null || true
+
+exit 0

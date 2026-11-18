@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""ARMOS Updater — Portage sync and world updates with a simple GUI."""
+
+import os
+import platform
+import sys
+import time
+
+sys.path.insert(0, "/usr/lib/armos")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
+
+import armos_common as common  # noqa: E402
+
+
+class Updater(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.armos.Updater")
+        self.window = None
+        self.info = None
+
+    def do_activate(self):
+        common.apply_theme()
+        self.window = Gtk.ApplicationWindow(application=self, title="Обновления ARMOS")
+        self.window.set_default_size(760, 520)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+        outer.set_border_width(24)
+        self.window.add(outer)
+
+        title = Gtk.Label(label="Обновления системы", xalign=0)
+        title.get_style_context().add_class("title")
+        outer.pack_start(title, False, False, 0)
+
+        self.info = Gtk.Label(xalign=0)
+        self.info.set_line_wrap(True)
+        self.info.get_style_context().add_class("subtitle")
+        outer.pack_start(self.info, False, False, 0)
+
+        warning = Gtk.Label(
+            label="ARMOS — source-based дистрибутив. Обновление может собирать "
+            "пакеты из исходников и занять продолжительное время. "
+            "После обновления проверьте файлы конфигурации через dispatch-conf.",
+            xalign=0,
+        )
+        warning.set_line_wrap(True)
+        outer.pack_start(warning, False, False, 0)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        outer.pack_start(box, False, False, 0)
+
+        sync = Gtk.Button(label="Синхронизировать репозитории (emerge --sync)")
+        sync.connect("clicked", lambda *_: self._run("Синхронизация Portage", ["emerge", "--sync"]))
+        box.pack_start(sync, False, False, 0)
+
+        check = Gtk.Button(label="Проверить обновления (emerge -puDNv @world)")
+        check.connect("clicked", lambda *_: self._check())
+        box.pack_start(check, False, False, 0)
+
+        update = Gtk.Button(label="Обновить систему (emerge -uDNv @world)")
+        update.get_style_context().add_class("suggested")
+        update.connect("clicked", lambda *_: self._update())
+        box.pack_start(update, False, False, 0)
+
+        outer.pack_start(Gtk.Separator(), False, False, 0)
+
+        notes = Gtk.Label(
+            label="Совет: для драйверов NVIDIA и дополнительных приложений "
+            "используйте «Магазин ARMOS».",
+            xalign=0,
+        )
+        notes.set_line_wrap(True)
+        notes.get_style_context().add_class("subtitle")
+        outer.pack_start(notes, False, False, 0)
+
+        self.window.show_all()
+        self._refresh_info()
+
+    def _refresh_info(self):
+        kernel = platform.release()
+        repo = "/var/db/repos/gentoo"
+        synced = "неизвестно"
+        try:
+            stamp = os.path.getmtime(repo)
+            synced = time.strftime("%d.%m.%Y %H:%M", time.localtime(stamp))
+        except OSError:
+            pass
+        self.info.set_text(
+            "{} • ядро {} • репозиторий обновлён: {}".format(
+                common.APP_VERSION, kernel, synced
+            )
+        )
+
+    def _run(self, title, argv, on_done=None):
+        self._refresh_info()
+        return common.TaskWindow(
+            title, argv, parent=self.window, on_done=on_done or (lambda *_: self._refresh_info())
+        )
+
+    def _check(self):
+        def done(status):
+            self._refresh_info()
+            text = task.get_text()
+            updates = sum(1 for line in text.splitlines() if line.startswith("[ebuild"))
+            if status == 0:
+                if updates:
+                    common.message(
+                        self.window,
+                        "Доступно обновлений: {}.\n"
+                        "Нажмите «Обновить систему» для установки.".format(updates),
+                    )
+                else:
+                    common.message(self.window, "Система обновлена: новых пакетов нет.")
+
+        task = self._run("Проверка обновлений", ["emerge", "-puDNv", "@world"], on_done=done)
+
+    def _update(self):
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Обновить систему?",
+        )
+        dialog.format_secondary_text(
+            "Будет выполнено emerge -uDNv @world. "
+            "Сборка из исходников может занять много времени."
+        )
+        response = dialog.run()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK:
+            return
+        self._run(
+            "Обновление системы",
+            ["emerge", "-uDNv", "--quiet-build=y", "@world"],
+        )
+
+
+if __name__ == "__main__":
+    sys.exit(Updater().run(sys.argv))

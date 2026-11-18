@@ -1,0 +1,2 @@
+# Per-package license overrides.
+# Global ACCEPT_LICENSE="*" is used during the M0/M1 build; review before release.

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS Center
+Name[ru]=Центр ARMOS
+Comment=System settings, applications and drivers
+Comment[ru]=Настройки системы, приложения и драйверы
+Exec=armos-center
+Icon=armos-logo
+Terminal=false
+StartupNotify=true
+Categories=Settings;System;
+Keywords=armos;settings;control;center;

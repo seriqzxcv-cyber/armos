@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARMOS 1.0 «GEN» — предпросмотр</title>
+<style>
+  :root {
+    --bg: #0E1116;
+    --surface: #151A21;
+    --surface2: #1B222C;
+    --border: #2A3442;
+    --text: #E6EAF0;
+    --muted: #8A94A6;
+    --accent: #4CC2FF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Noto Sans", "DejaVu Sans", system-ui, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
+  header { display: flex; align-items: center; gap: 18px; margin-bottom: 8px; }
+  header img.logo { width: 64px; height: 64px; }
+  header img.word { height: 34px; }
+  h1 { font-size: 26px; margin: 0; letter-spacing: .5px; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .note {
+    margin: 18px 0 26px; padding: 12px 16px; border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 8px;
+    background: var(--surface); color: var(--muted); font-size: 13px;
+  }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 1.4px;
+       color: var(--muted); margin: 36px 0 12px; font-weight: 600; }
+
+  /* ---- desktop mockup ---- */
+  .desktop {
+    position: relative; border-radius: 12px; overflow: hidden;
+    border: 1px solid var(--border); aspect-ratio: 16 / 9;
+    background: #0B0E12 url("assets/generated/armos-dark-1080p.png") center/cover no-repeat;
+    box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  }
+  .panel {
+    position: absolute; top: 0; left: 0; right: 0; height: 38px;
+    display: flex; align-items: center; gap: 14px; padding: 0 12px;
+    background: rgba(14,17,22,.82); backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(76,194,255,.14); font-size: 12.5px;
+  }
+  .panel .whisker {
+    display: flex; align-items: center; gap: 8px; padding: 4px 10px;
+    border-radius: 6px; background: rgba(76,194,255,.10); color: var(--accent);
+  }
+  .panel .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+  .panel .task { color: var(--text); opacity: .85; }
+  .panel .spacer { flex: 1; }
+  .panel .tray { display: flex; gap: 12px; color: var(--muted); }
+  .clock { color: var(--text); font-variant-numeric: tabular-nums; }
+
+  .window {
+    position: absolute; left: 6%; top: 14%; width: 62%;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 22px 60px rgba(0,0,0,.6);
+  }
+  .titlebar {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--muted);
+  }
+  .titlebar .btn { width: 10px; height: 10px; border-radius: 50%;
+                   background: var(--border); }
+  .titlebar .name { margin-left: 6px; color: var(--text); }
+  .win-body { padding: 18px; }
+  .win-body img { width: 42px; }
+  .win-title { font-size: 19px; font-weight: 700; margin: 10px 0 4px; }
+  .win-sub { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tile {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px; font-size: 12.5px;
+  }
+  .tile b { display: block; font-size: 13px; margin-bottom: 3px; }
+  .tile span { color: var(--muted); font-size: 11px; }
+  .tile.primary { border-color: var(--accent); background: rgba(76,194,255,.08); }
+  .tile.primary b { color: var(--accent); }
+
+  /* ---- grids of assets ---- */
+  .grid { display: grid; gap: 14px; }
+  .cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px;
+  }
+  .card img { width: 100%; border-radius: 6px; display: block; }
+  .card .cap { margin-top: 9px; font-size: 12px; color: var(--muted); }
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  .sw { flex: 1 1 120px; border: 1px solid var(--border); border-radius: 8px;
+        overflow: hidden; background: var(--surface); }
+  .sw .chip { height: 54px; }
+  .sw .meta { padding: 8px 10px; font-size: 11.5px; color: var(--muted); }
+  .sw .meta code { color: var(--text); }
+
+  /* ---- grub mock ---- */
+  .grub {
+    position: relative; border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border); aspect-ratio: 16/9;
+    background: #05070A url("overlay/x11-themes/armos-branding/files/root/boot/grub/themes/armos/background.png") center/cover no-repeat;
+    display: flex; flex-direction: column; justify-content: center;
+    padding-left: 8%;
+  }
+  .grub .gtitle { color: var(--text); font-size: 15px; letter-spacing: 2px;
+                  margin-bottom: 18px; }
+  .grub .item { font-size: 13.5px; color: #C9D3E0; padding: 5px 0; }
+  .grub .item.sel { color: var(--accent); }
+  .grub .bar { position: absolute; left: 8%; right: 42%; bottom: 10%; height: 5px;
+               background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .grub .bar i { display: block; width: 42%; height: 100%; background: var(--accent); }
+
+  footer { margin-top: 40px; color: var(--muted); font-size: 12px;
+           border-top: 1px solid var(--border); padding-top: 14px; }
+  code { font-family: "JetBrains Mono", "DejaVu Sans Mono", monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <img class="logo" src="assets/generated/armos-logo-256.png" alt="ARMOS">
+    <div>
+      <img class="word" src="assets/generated/armos-wordmark.png" alt="ARMOS">
+      <h1>ARMOS 1.0 «GEN»</h1>
+      <div class="sub">source-based Linux · Gentoo + OpenRC · XFCE 4.20 · x86_64</div>
+    </div>
+  </header>
+
+  <div class="note">
+    Это предпросмотр оформления на реальных ассетах проекта. Базовая система
+    сейчас собирается, поэтому загрузочного ISO и QEMU-сеанса пока нет:
+    визуальную загрузку покажу, как только появится ядро и initramfs.
+  </div>
+
+  <h2>Рабочий стол</h2>
+  <div class="desktop">
+    <div class="panel">
+      <div class="whisker"><span class="dot"></span> ARMOS</div>
+      <div class="task">Терминал</div>
+      <div class="task">Thunar</div>
+      <div class="spacer"></div>
+      <div class="tray">
+        <span>⌨ us/ru</span><span>◉</span><span>▮▮▮</span>
+        <span class="clock">14:20 · вт, 17 ноя</span>
+      </div>
+    </div>
+
+    <div class="window">
+      <div class="titlebar">
+        <span class="btn"></span><span class="btn"></span><span class="btn"></span>
+        <span class="name">Добро пожаловать в ARMOS</span>
+      </div>
+      <div class="win-body">
+        <img src="assets/generated/armos-logo-128.png" alt="">
+        <div class="win-title">Добро пожаловать в ARMOS 1.0</div>
+        <div class="win-sub">Source-based Linux с рабочим столом XFCE. Всё готово к работе — выберите действие.</div>
+        <div class="tiles">
+          <div class="tile primary"><b>Установить ARMOS</b><span>Установка на диск через Calamares</span></div>
+          <div class="tile"><b>Центр ARMOS</b><span>Настройки, драйверы, система</span></div>
+          <div class="tile"><b>Магазин приложений</b><span>Каталог программ ARMOS</span></div>
+          <div class="tile"><b>Обновления</b><span>Синхронизация и обновление системы</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>Загрузчик GRUB</h2>
+  <div class="grub">
+    <div class="gtitle">ARMOS 1.0 GEN</div>
+    <div class="item sel">ARMOS 1.0 GEN — Live</div>
+    <div class="item">ARMOS 1.0 GEN — Live with persistence</div>
+    <div class="item">ARMOS 1.0 GEN — Live (safe graphics)</div>
+    <div class="item">ARMOS 1.0 GEN — Live (RAM)</div>
+    <div class="bar"><i></i></div>
+  </div>
+
+  <h2>Обои</h2>
+  <div class="grid cols-3">
+    <div class="card">
+      <img src="assets/generated/armos-dark-1080p.png" alt="1080p">
+      <div class="cap">armos-dark-1080p · рабочий стол</div>
+    </div>
+    <div class="card">
+      <img src="assets/generated/armos-dark-4k.png" alt="4K">
+      <div class="cap">armos-dark-4k · LightDM</div>
+    </div>
+    <div class="card">
+      <img src="overlay/x11-themes/armos-branding/files/root/boot/grub/themes/armos/background.png" alt="GRUB">
+      <div class="cap">Фон темы GRUB</div>
+    </div>
+  </div>
+
+  <h2>Логотип</h2>
+  <div class="grid cols-3">
+    <div class="card"><img src="assets/generated/armos-logo-512.png" alt="logo"><div class="cap">armos-logo-512.png</div></div>
+    <div class="card" style="display:flex;align-items:center;justify-content:center;background:#0B0E12">
+      <img src="assets/logo/armos-logo.svg" alt="logo svg" style="width:60%">
+      <div class="cap">SVG (вектор)</div>
+    </div>
+    <div class="card" style="display:flex;align-items:center;justify-content:center;background:#0B0E12">
+      <img src="assets/generated/armos-wordmark.png" alt="wordmark" style="width:90%">
+    </div>
+  </div>
+
+  <h2>Палитра</h2>
+  <div class="swatches">
+    <div class="sw"><div class="chip" style="background:#0E1116"></div><div class="meta"><code>#0E1116</code><br>фон</div></div>
+    <div class="sw"><div class="chip" style="background:#151A21"></div><div class="meta"><code>#151A21</code><br>поверхность</div></div>
+    <div class="sw"><div class="chip" style="background:#1B222C"></div><div class="meta"><code>#1B222C</code><br>панели</div></div>
+    <div class="sw"><div class="chip" style="background:#2A3442"></div><div class="meta"><code>#2A3442</code><br>границы</div></div>
+    <div class="sw"><div class="chip" style="background:#E6EAF0"></div><div class="meta"><code>#E6EAF0</code><br>текст</div></div>
+    <div class="sw"><div class="chip" style="background:#4CC2FF"></div><div class="meta"><code>#4CC2FF</code><br>акцент</div></div>
+  </div>
+
+  <footer>
+    Предпросмотр: <code>/home/ghost/Документы/Проект по умолчанию/armos/preview.html</code><br>
+    После завершения <code>make base</code> будет создан образ и запущен QEMU.
+  </footer>
+</div>
+</body>
+</html>

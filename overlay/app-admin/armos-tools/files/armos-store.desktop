@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS Store
+Name[ru]=Магазин ARMOS
+Comment=Curated application catalog
+Comment[ru]=Каталог приложений ARMOS
+Exec=armos-store
+Icon=system-software-install
+Terminal=false
+StartupNotify=true
+Categories=System;PackageManager;
+Keywords=armos;store;packages;install;

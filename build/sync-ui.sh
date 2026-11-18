@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Copy the ARMOS UI sources from the overlay into the prepared rootfs.
+# Re-runnable; all paths are absolute inside the privileged builder container.
+set -euo pipefail
+
+ROOTFS=${ROOTFS:-/armos/build/rootfs}
+OVERLAY=/armos/overlay
+BRANDING="$OVERLAY/x11-themes/armos-branding/files/root"
+TOOLS="$OVERLAY/app-admin/armos-tools/files"
+R="$ROOTFS"
+
+[[ -d "$R/etc" ]] || { echo "no rootfs at $R" >&2; exit 1; }
+
+# Branding: new GEN wallpaper, session defaults and GTK/panel styling.
+for png in armos-gen-4k.png armos-gen-1600p.png armos-gen-1080p.png; do
+  install -Dm644 "$BRANDING/usr/share/backgrounds/armos/$png" \
+    "$R/usr/share/backgrounds/armos/$png"
+done
+install -Dm755 "$BRANDING/usr/bin/armos-desktop-defaults" \
+  "$R/usr/bin/armos-desktop-defaults"
+install -Dm644 "$BRANDING/usr/share/armos/config/xfce4/xfce4-desktop.xml" \
+  "$R/usr/share/armos/config/xfce4/xfce4-desktop.xml"
+install -Dm644 "$BRANDING/usr/share/armos/config/xfce4/xsettings.xml" \
+  "$R/usr/share/armos/config/xfce4/xsettings.xml"
+install -Dm644 "$BRANDING/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml" \
+  "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+install -Dm644 "$BRANDING/etc/gtk-3.0/gtk.css" \
+  "$R/etc/gtk-3.0/gtk.css"
+
+# ARMOS tools: shared palette and the new desktop widget.
+install -Dm644 "$TOOLS/armos_common.py" "$R/usr/lib/armos/armos_common.py"
+install -Dm755 "$TOOLS/armos-desklet" "$R/usr/bin/armos-desklet"
+install -Dm644 "$TOOLS/armos-desklet-autostart.desktop" \
+  "$R/etc/xdg/autostart/armos-desklet.desktop"
+
+chown -R 0:0 \
+  "$R/usr/share/backgrounds/armos" \
+  "$R/usr/bin/armos-desktop-defaults" \
+  "$R/usr/bin/armos-desklet" \
+  "$R/usr/lib/armos/armos_common.py" \
+  "$R/etc/gtk-3.0/gtk.css" \
+  "$R/etc/xdg/autostart/armos-desklet.desktop" \
+  "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml" \
+  "$R/usr/share/armos/config/xfce4"
+
+echo "[ARMOS] UI files synced into $R"

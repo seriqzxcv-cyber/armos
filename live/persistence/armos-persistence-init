@@ -1,0 +1,43 @@
+#!/bin/sh
+# Initialize an ext4 partition for ARMOS live persistence.
+#
+# Usage: armos-persistence-init /dev/sdXN
+#
+# The partition is formatted with the label ARMOS_PERSIST and prepared with the
+# directory layout expected by dracut dmsquash-live:
+#   /LiveOS/overlay   overlayfs upperdir
+#   /LiveOS/ovlwork   overlayfs workdir
+#
+# WARNING: this destroys all data on the target partition.
+set -eu
+
+dev="${1:-}"
+if [ -z "$dev" ] || [ ! -b "$dev" ]; then
+    echo "Usage: $0 /dev/sdXN" >&2
+    exit 1
+fi
+
+if [ -t 0 ]; then
+    printf 'This will ERASE %s and create ARMOS persistence. Continue? [y/N] ' "$dev"
+    read -r answer
+    case "$answer" in
+        y|Y|yes|YES) ;;
+        *) echo "Cancelled."; exit 1 ;;
+    esac
+fi
+
+command -v mkfs.ext4 >/dev/null 2>&1 || { echo "mkfs.ext4 not found" >&2; exit 1; }
+
+mnt=$(mktemp -d)
+trap 'umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true' EXIT
+
+mkfs.ext4 -q -L ARMOS_PERSIST -m 0 "$dev"
+mount "$dev" "$mnt"
+mkdir -p "$mnt/LiveOS/overlay" "$mnt/LiveOS/ovlwork"
+sync
+umount "$mnt"
+rmdir "$mnt"
+trap - EXIT
+
+echo "Persistence ready on $dev (label ARMOS_PERSIST)."
+echo "Boot the live ISO with the 'Live with persistence' menu entry."

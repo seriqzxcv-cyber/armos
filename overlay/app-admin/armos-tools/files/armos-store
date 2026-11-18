@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""ARMOS Store — a small curated package catalog for Portage."""
+
+import sys
+
+sys.path.insert(0, "/usr/lib/armos")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
+
+import armos_common as common  # noqa: E402
+
+CATEGORIES = ["Все", "Интернет", "Офис", "Графика", "Медиа", "Разработка", "Система", "Драйверы"]
+
+CATALOG = [
+    ("www-client/firefox-bin", "Firefox", "Быстрый браузер Mozilla", "Интернет"),
+    ("www-client/vivaldi", "Vivaldi", "Браузер Vivaldi (проприетарный)", "Интернет"),
+    ("www-client/firefox", "Firefox (сборка)", "Firefox, собранный из исходников", "Интернет"),
+    ("app-office/libreoffice-bin", "LibreOffice", "Офисный пакет (готовая сборка)", "Офис"),
+    ("app-office/libreoffice", "LibreOffice (сборка)", "Офисный пакет из исходников", "Офис"),
+    ("app-office/gnumeric", "Gnumeric", "Редактор электронных таблиц", "Офис"),
+    ("app-office/abiword", "Abiword", "Лёгкий текстовый процессор", "Офис"),
+    ("media-gfx/gimp", "GIMP", "Редактор растровой графики", "Графика"),
+    ("media-gfx/inkscape", "Inkscape", "Редактор векторной графики", "Графика"),
+    ("media-gfx/imagemagick", "ImageMagick", "Обработка изображений из командной строки", "Графика"),
+    ("media-video/vlc", "VLC", "Универсальный медиаплеер", "Медиа"),
+    ("media-video/mpv", "mpv", "Минималистичный видеоплеер", "Медиа"),
+    ("media-sound/audacity", "Audacity", "Редактор звука", "Медиа"),
+    ("media-sound/ardour", "Ardour", "Цифровая звуковая станция", "Медиа"),
+    ("media-video/obs-studio", "OBS Studio", "Запись и стриминг экрана", "Медиа"),
+    ("dev-vcs/git", "Git", "Система контроля версий", "Разработка"),
+    ("dev-util/geany", "Geany", "Лёгкий редактор кода", "Разработка"),
+    ("dev-util/codeblocks", "Code::Blocks", "IDE для C/C++", "Разработка"),
+    ("sys-process/htop", "htop", "Монитор процессов", "Система"),
+    ("app-misc/tmux", "tmux", "Мультиплексор терминала", "Система"),
+    ("sys-fs/ntfs3g", "NTFS-3G", "Доступ к разделам NTFS", "Система"),
+    ("app-emulation/wine-vanilla", "Wine", "Запуск Windows-приложений", "Система"),
+    ("x11-drivers/nvidia-drivers", "NVIDIA", "Проприетарный драйвер NVIDIA", "Драйверы"),
+]
+
+
+class Store(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.armos.Store")
+        self.window = None
+        self.listbox = None
+        self.search = None
+        self.category = None
+        self.status = None
+
+    def do_activate(self):
+        common.apply_theme()
+        self.window = Gtk.ApplicationWindow(application=self, title="Магазин ARMOS")
+        self.window.set_default_size(860, 640)
+        self.window.set_position(Gtk.WindowPosition.CENTER)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        outer.set_border_width(20)
+        self.window.add(outer)
+
+        title = Gtk.Label(label="Магазин приложений", xalign=0)
+        title.get_style_context().add_class("title")
+        outer.pack_start(title, False, False, 0)
+
+        hint = Gtk.Label(
+            label="Пакеты устанавливаются через Portage. "
+            "Сборки из исходников могут занимать время; версии *-bin уже собраны.",
+            xalign=0,
+        )
+        hint.set_line_wrap(True)
+        hint.get_style_context().add_class("subtitle")
+        outer.pack_start(hint, False, False, 0)
+
+        filters = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.search = Gtk.SearchEntry()
+        self.search.set_placeholder_text("Поиск приложений…")
+        self.search.set_hexpand(True)
+        self.search.connect("search-changed", lambda *_: self.refresh())
+        filters.pack_start(self.search, True, True, 0)
+
+        self.category = Gtk.ComboBoxText()
+        for name in CATEGORIES:
+            self.category.append_text(name)
+        self.category.set_active(0)
+        self.category.connect("changed", lambda *_: self.refresh())
+        filters.pack_start(self.category, False, False, 0)
+        outer.pack_start(filters, False, False, 0)
+
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_hexpand(True)
+        scroller.set_vexpand(True)
+        self.listbox = Gtk.ListBox()
+        self.listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.listbox.set_sort_func(self._sort)
+        scroller.add(self.listbox)
+        outer.pack_start(scroller, True, True, 0)
+
+        self.status = Gtk.Label(label="", xalign=0)
+        self.status.get_style_context().add_class("subtitle")
+        outer.pack_start(self.status, False, False, 0)
+
+        self.window.show_all()
+        self.refresh()
+
+    @staticmethod
+    def _sort(row1, row2):
+        a = getattr(row1, "name", "").lower()
+        b = getattr(row2, "name", "").lower()
+        return (a > b) - (a < b)
+
+    def refresh(self):
+        for child in self.listbox.get_children():
+            self.listbox.remove(child)
+
+        query = self.search.get_text().strip().lower()
+        category = self.category.get_active_text()
+        shown = 0
+        total_installed = 0
+
+        for atom, name, desc, cat in CATALOG:
+            is_installed = common.installed(atom)
+            if is_installed:
+                total_installed += 1
+            if category != "Все" and cat != category:
+                continue
+            haystack = " ".join((name, desc, atom, cat)).lower()
+            if query and query not in haystack:
+                continue
+            self._add_row(atom, name, desc, cat, is_installed)
+            shown += 1
+
+        self.status.set_text(
+            "Показано: {} • установлено в каталоге: {}".format(shown, total_installed)
+        )
+
+    def _add_row(self, atom, name, desc, category, is_installed):
+        row = Gtk.ListBoxRow()
+        row.name = name
+        row.set_activatable(False)
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.set_border_width(10)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        title = Gtk.Label(label=name, xalign=0)
+        title.get_style_context().add_class("tile-title")
+        text.pack_start(title, False, False, 0)
+        subtitle = Gtk.Label(label=desc, xalign=0)
+        subtitle.set_line_wrap(True)
+        subtitle.get_style_context().add_class("tile-subtitle")
+        text.pack_start(subtitle, False, False, 0)
+        meta = Gtk.Label(label="{} • {}".format(atom, category), xalign=0)
+        meta.get_style_context().add_class("subtitle")
+        text.pack_start(meta, False, False, 0)
+        box.pack_start(text, True, True, 0)
+
+        if is_installed:
+            badge = Gtk.Label(label="установлено")
+            badge.get_style_context().add_class("accent")
+            box.pack_start(badge, False, False, 0)
+            button = Gtk.Button(label="Удалить")
+            button.connect("clicked", lambda *_: self._remove(atom, name))
+        else:
+            button = Gtk.Button(label="Установить")
+            button.get_style_context().add_class("suggested")
+            button.connect("clicked", lambda *_: self._install(atom, name))
+        box.pack_start(button, False, False, 0)
+
+        row.add(box)
+        self.listbox.add(row)
+
+    def _install(self, atom, name):
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            flags=0,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Установить «{}»?".format(name),
+        )
+        dialog.format_secondary_text(
+            "Пакет {} будет установлен через Portage. "
+            "Для сборки из исходников может потребоваться время.".format(atom)
+        )
+        response = dialog.run()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK:
+            return
+        common.TaskWindow(
+            "Установка: " + name,
+            ["emerge", "--ask=n", "--quiet-build=y", atom],
+            parent=self.window,
+            on_done=lambda *_: self.refresh(),
+        )
+
+    def _remove(self, atom, name):
+        cat, pkg = atom.split("/", 1)
+        dialog = Gtk.MessageDialog(
+            transient_for=self.window,
+            flags=0,
+            message_type=Gtk.MessageType.WARNING,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text="Удалить «{}»?".format(name),
+        )
+        dialog.format_secondary_text(
+            "Пакет {}/{} будет удалён. Зависимости останутся в системе.".format(cat, pkg)
+        )
+        response = dialog.run()
+        dialog.destroy()
+        if response != Gtk.ResponseType.OK:
+            return
+        common.TaskWindow(
+            "Удаление: " + name,
+            ["emerge", "--ask=n", "--unmerge", atom],
+            parent=self.window,
+            on_done=lambda *_: self.refresh(),
+        )
+
+
+if __name__ == "__main__":
+    sys.exit(Store().run(sys.argv))
