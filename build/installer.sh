@@ -29,7 +29,7 @@ log "Installing branding images ..."
 for dst in "$BR_DST" "$CAL_DST/branding/armos"; do
   install -m 0644 "$PROJECT_ROOT/assets/generated/armos-logo-256.png" "$dst/productLogo.png"
   install -m 0644 "$PROJECT_ROOT/assets/generated/armos-logo-128.png" "$dst/productIcon.png"
-  install -m 0644 "$PROJECT_ROOT/assets/generated/armos-dark-1080p.png" "$dst/productWelcome.png"
+  install -m 0644 "$PROJECT_ROOT/overlay/x11-themes/armos-branding/files/root/usr/share/backgrounds/armos/armos-gen-1080p.png" "$dst/productWelcome.png"
 done
 
 log "Installing post-install hook ..."

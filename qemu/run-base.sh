@@ -13,8 +13,12 @@ if [[ ! -f "$IMAGE" || "${REBUILD:-0}" == "1" ]]; then
   "$PROJECT_ROOT/build/container.sh" /armos/build/make-image.sh
 fi
 
-KERNEL=$(ls "$ROOTFS"/boot/vmlinuz-* 2>/dev/null | sort -V | tail -1 || true)
-KVER=$(basename "${KERNEL:-vmlinuz-x}" | sed 's/^vmlinuz-//')
+KVER="${KVER:-}"
+if [[ -z "$KVER" ]]; then
+  KVER=$(basename "${KERNEL:-vmlinuz-x}" | sed 's/^vmlinuz-//')
+fi
+KERNEL="${KERNEL:-$ROOTFS/boot/vmlinuz-$KVER}"
+[[ -f "$KERNEL" ]] || KERNEL=$(ls "$ROOTFS"/boot/vmlinuz-* 2>/dev/null | sort -V | tail -1 || true)
 INITRD="$ROOTFS/boot/initramfs-${KVER}.img"
 [[ -f "$INITRD" ]] || INITRD=$(ls "$ROOTFS"/boot/initramfs-[0-9]*.img 2>/dev/null | sort -V | tail -1 || true)
 

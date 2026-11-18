@@ -20,7 +20,8 @@
 - [x] Branding applied to XFCE/LightDM/GRUB/Plymouth; neutral dark GTK3 CSS and
       bottom full-width centred panel (`p=12`) installed via `armos-branding`
 - [x] Live user `live`/`live` with NOPASSWD sudo, LightDM autologin
-- [ ] GUI verification in QEMU ( rebuilding 8 G image with the desktop )
+- [x] GUI verification in QEMU (autologin, XFCE, wallpaper, ARMOS desklet)
+- [x] MIME associations, Super+C / Super+S shortcuts, XDG folders for live user
 - [ ] squashfs + GRUB hybrid ISO (scripts drafted in `build/live.sh`)
 - [ ] QEMU BIOS/UEFI live boot
 
@@ -46,20 +47,19 @@
 - [ ] SHA256 + docs
 - [ ] ISO release
 
-## M5 — собственное ядро (не начинать до завершения M0–M4)
+## M5 — собственное ядро (по запросу пользователя, параллельно с M1–M4)
 
 Выбран **вариант 3**: полностью своё ядро из исходников с собственными патчами
 и брендингом, а не `gentoo-kernel` / `gentoo-sources` с готовым конфигом.
 
-- [ ] Скопировать исходники ядра в `overlay/sys-kernel/armos-kernel/`
-- [ ] Набор патчей ARMOS (в том числе логотип загрузки и `CONFIG_LOCALVERSION="-armos"`)
-- [ ] Свой `.config`: только нужные драйверы и ФС (ext4, squashfs, overlayfs, loop,
-      isofs, virtio, NVMe/AHCI, USB, i915/amdgpu/nouveau, input, audio)
-- [ ] Сборка `vmlinuz` + модулей, dracut-initramfs
+- [x] Ванильные исходники `linux-6.18` распакованы (кэш distfiles)
+- [x] Патч `armos-branding.patch` (баннер ARMOS при загрузке)
+- [x] Своя иконка загрузки `logo_linux_clut224.ppm` (монорамма A, 224 цвета)
+- [x] Свой `.config`: `configs/kernel/config-6.18-armos` (defconfig + virtio,
+      ext4/squashfs/overlayfs/loop/dm-crypt, USB/NVMe/AHCI, DRM, аудио, сеть)
+- [ ] Сборка `vmlinuz` + модулей (`build/kernel.sh`)
+- [ ] dracut-initramfs для своего ядра
 - [ ] Проверка загрузки в QEMU (BIOS и UEFI) и на реальном железе
 - [ ] Переключение `base.sh` / `live.sh` на своё ядро, пересборка ISO
 - [ ] Опциональная урезка firmware (2 ГБ → ~400–600 МБ) после проверки железа
 - [ ] `gentoo-kernel-bin` оставить как запасной вариант для отката
-
-**Важно:** работу по M5 не начинать, пока не собрано и не проверено основное
-live ISO (M1–M4). Текущие этапы идут на `gentoo-kernel-bin-6.18.63`.

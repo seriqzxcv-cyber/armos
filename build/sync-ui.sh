@@ -22,8 +22,13 @@ install -Dm644 "$BRANDING/usr/share/armos/config/xfce4/xfce4-desktop.xml" \
   "$R/usr/share/armos/config/xfce4/xfce4-desktop.xml"
 install -Dm644 "$BRANDING/usr/share/armos/config/xfce4/xsettings.xml" \
   "$R/usr/share/armos/config/xfce4/xsettings.xml"
+install -Dm644 "$BRANDING/usr/share/armos/config/lightdm/lightdm-gtk-greeter.conf" \
+  "$R/usr/share/armos/config/lightdm/lightdm-gtk-greeter.conf"
 install -Dm644 "$BRANDING/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml" \
   "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+install -Dm644 "$BRANDING/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml" \
+  "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboard-shortcuts.xml"
+install -Dm644 "$BRANDING/etc/xdg/mimeapps.list" "$R/etc/xdg/mimeapps.list"
 install -Dm644 "$BRANDING/etc/gtk-3.0/gtk.css" \
   "$R/etc/gtk-3.0/gtk.css"
 
@@ -41,6 +46,7 @@ chown -R 0:0 \
   "$R/etc/gtk-3.0/gtk.css" \
   "$R/etc/xdg/autostart/armos-desklet.desktop" \
   "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml" \
-  "$R/usr/share/armos/config/xfce4"
+  "$R/etc/xdg/mimeapps.list" \
+  "$R/usr/share/armos/config"
 
 echo "[ARMOS] UI files synced into $R"

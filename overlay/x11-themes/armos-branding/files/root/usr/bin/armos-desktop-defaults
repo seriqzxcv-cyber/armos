@@ -40,6 +40,12 @@ apply_wallpaper() {
     set_prop "$prefix/image-style" int 5
 }
 
+# Fallback for QEMU guests without a DRM connector sysfs entry: Xfce then
+# falls back to the generic "Virtual-1" identifier.
+if [ -z "$connectors" ]; then
+    connectors="Virtual-1"
+fi
+
 # Wait until xfdesktop has created its backdrop channel (up to 30 s).
 i=0
 while [ "$i" -lt 30 ]; do

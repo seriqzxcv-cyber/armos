@@ -1,6 +1,8 @@
 # Build artifacts
-build/rootfs/
 build/cache/
+build/rootfs/
+build/kernel-install/
+build/kernel-work/
 build/*.img
 out/*
 !out/.gitkeep

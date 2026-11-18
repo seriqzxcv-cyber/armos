@@ -81,6 +81,10 @@ EOF
     useradd -m -G "$live_groups" -s /bin/bash live
   fi
   echo "live:live" | chpasswd
+  # Standard XDG folders so file dialogs and the desktop look "lived in".
+  for dir in Documents Downloads Pictures Music Videos Public Templates; do
+    install -d -o live -g live "/home/live/$dir"
+  done
   mkdir -p /etc/sudoers.d
   grep -q "^#includedir /etc/sudoers.d" /etc/sudoers || \
     echo "#includedir /etc/sudoers.d" >> /etc/sudoers

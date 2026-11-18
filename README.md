@@ -2,8 +2,9 @@
 
 **ARMOS 1.0 "GEN"** — source-based Linux distribution built on Gentoo.
 
-Status: **M0 — base system build in progress**. Desktop, installer and live
-ISO scripts are prepared and will run on top of the finished base.
+Status: **M0 — base system done, M1 — desktop done**. M2–M4 (installer, live
+ISO, release) are in progress; the custom ARMOS kernel (M5) is being built in
+parallel. See [docs/STATUS.md](docs/STATUS.md) for the full checklist.
 
 ## Goals
 
@@ -33,10 +34,21 @@ After M0:
 
 ```bash
 make desktop     # XFCE, LightDM, apps, locale, branding
+make sync-ui     # refresh ARMOS UI files and desktop defaults in rootfs
+make image       # rebuild build/armos-base.img from rootfs (SIZE=12G)
 make installer   # Calamares + ARMOS installer configuration
 make live        # squashfs + GRUB hybrid ISO
 make qemu-live   # boot the live ISO (BIOS)
 UEFI=1 make qemu-live
+```
+
+Custom ARMOS kernel (variant 3, see [docs/KERNEL.md](docs/KERNEL.md)):
+
+```bash
+make kernel-config KERNEL_DIR=/path/without/spaces/linux-6.18
+make kernel KERNEL_DIR=/path/without/spaces/linux-6.18
+make kernel-install
+KVER=6.18.0-armos make qemu-base
 ```
 
 Credentials used for development:
