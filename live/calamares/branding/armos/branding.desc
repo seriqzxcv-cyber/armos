@@ -19,6 +19,10 @@ images:
     productIcon: "productIcon.png"
     productWelcome: "productWelcome.png"
 
+# Calamares 3.4 requires a slideshow key. An image slideshow keeps the QML
+# dependency out of the live ISO.
+slideshow: [ "productLogo.png" ]
+
 style:
     sidebarBackground: "#1B1B1B"
     sidebarText: "#E6E6E6"

@@ -124,6 +124,9 @@ log "Writing GRUB configuration ..."
 cat > "$STAGE/boot/grub/grub.cfg" <<EOF
 set default=0
 set timeout=10
+set color_normal=light-gray/black
+set menu_color_normal=light-gray/black
+set menu_color_highlight=blue/black
 
 insmod all_video
 insmod gfxterm
