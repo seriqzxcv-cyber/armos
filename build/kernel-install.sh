@@ -23,7 +23,8 @@ install -m644 "$SRC/config-$KVER" "$ROOTFS/boot/config-$KVER"
 in_chroot '
   kver=6.18.0-armos
   dracut --force --no-hostonly \
-    --add-drivers "virtio_blk virtio_pci virtio_net ext4 squashfs overlay bochs" \
+    --add 'plymouth' \
+    --add-drivers "virtio_blk virtio_pci virtio_net ext4 squashfs overlay bochs drm" \
     --kver "$kver" "/boot/initramfs-${kver}.img"
   chmod 0644 "/boot/initramfs-${kver}.img"
   echo "ARMOS kernel $kver installed"

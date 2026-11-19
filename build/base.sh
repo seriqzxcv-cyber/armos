@@ -115,7 +115,8 @@ EOF
   kver=$(ls /lib/modules | sort -V | tail -1)
   echo "Kernel: $kver"
   dracut --force --no-hostonly \
-    --add-drivers "virtio_blk virtio_pci virtio_net ext4" \
+    --add 'plymouth' \
+    --add-drivers "virtio_blk virtio_pci virtio_net ext4 drm bochs" \
     --kver "$kver" "/boot/initramfs-${kver}.img"
 
   # Stable names for bootloaders and the installer.

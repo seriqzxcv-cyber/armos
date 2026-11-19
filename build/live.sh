@@ -68,8 +68,8 @@ in_chroot '
 log "Building live initramfs ..."
 in_chroot "
   dracut --force --no-hostonly \
-    --add 'dmsquash-live' \
-    --add-drivers 'squashfs loop overlay isofs sr_mod cdrom virtio_blk virtio_pci virtio_net ext4' \
+    --add 'dmsquash-live plymouth' \
+    --add-drivers 'squashfs loop overlay isofs sr_mod cdrom virtio_blk virtio_pci virtio_net ext4 drm bochs' \
     --kver '$KVER' /boot/initramfs-live.img
 "
 
@@ -132,12 +132,12 @@ if [ -f /boot/grub/themes/armos/theme.txt ]; then
 fi
 
 menuentry "ARMOS 1.0 GEN — Live" {
-    linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.overlay.overlayfs=1 console=tty0 console=ttyS0,115200 quiet loglevel=4
+    linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.overlay.overlayfs=1 console=tty0 console=ttyS0,115200 quiet splash loglevel=4 plymouth.ignore-serial-consoles
     initrd /boot/initramfs-live.img
 }
 
 menuentry "ARMOS 1.0 GEN — Live with persistence" {
-    linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.overlay.overlayfs=1 rd.live.overlay=LABEL=$PERSIST_LABEL:/LiveOS/overlay console=tty0 console=ttyS0,115200 quiet loglevel=4
+    linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.overlay.overlayfs=1 rd.live.overlay=LABEL=$PERSIST_LABEL:/LiveOS/overlay console=tty0 console=ttyS0,115200 quiet splash loglevel=4 plymouth.ignore-serial-consoles
     initrd /boot/initramfs-live.img
 }
 
@@ -147,7 +147,7 @@ menuentry "ARMOS 1.0 GEN — Live (safe graphics)" {
 }
 
 menuentry "ARMOS 1.0 GEN — Live (RAM)" {
-    linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.ram rd.live.overlay.overlayfs=1 console=tty0 console=ttyS0,115200 quiet loglevel=4
+    linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.ram rd.live.overlay.overlayfs=1 console=tty0 console=ttyS0,115200 quiet splash loglevel=4 plymouth.ignore-serial-consoles
     initrd /boot/initramfs-live.img
 }
 EOF

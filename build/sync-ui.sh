@@ -31,6 +31,14 @@ install -Dm644 "$BRANDING/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-keyboar
 install -Dm644 "$BRANDING/etc/xdg/mimeapps.list" "$R/etc/xdg/mimeapps.list"
 install -Dm644 "$BRANDING/etc/gtk-3.0/gtk.css" \
   "$R/etc/gtk-3.0/gtk.css"
+install -Dm644 "$BRANDING/boot/grub/themes/armos/theme.txt" \
+  "$R/boot/grub/themes/armos/theme.txt"
+install -Dm644 "$BRANDING/boot/grub/themes/armos/background.png" \
+  "$R/boot/grub/themes/armos/background.png"
+for asset in armos.plymouth armos.script background.png logo.png bar-bg.png bar-fg.png; do
+  install -Dm644 "$BRANDING/usr/share/plymouth/themes/armos/$asset" \
+    "$R/usr/share/plymouth/themes/armos/$asset"
+done
 
 # ARMOS tools: shared palette and the new desktop widget.
 install -Dm644 "$TOOLS/armos_common.py" "$R/usr/lib/armos/armos_common.py"
@@ -61,6 +69,8 @@ chown -R 0:0 \
   "$R/etc/xdg/autostart" \
   "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml" \
   "$R/etc/xdg/mimeapps.list" \
-  "$R/usr/share/armos/config"
+  "$R/usr/share/armos/config" \
+  "$R/boot/grub/themes/armos" \
+  "$R/usr/share/plymouth/themes/armos"
 
 echo "[ARMOS] UI files synced into $R"
