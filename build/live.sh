@@ -97,14 +97,28 @@ install -Dm755 "$PROJECT_ROOT/live/persistence/armos-persistence-init" \
 
 log "Building squashfs (this can take a while) ..."
 SQUASHFS=$(command -v mksquashfs || true)
-[[ -n "$SQUASHFS" ]] || SQUASHFS="$PROJECT_ROOT/build/host-tools/mksquashfs"
+if [[ -n "$SQUASHFS" ]]; then
+  SQUASHFS_LIBS=""
+else
+  SQUASHFS="$PROJECT_ROOT/build/host-tools/mksquashfs"
+  SQUASHFS_LIBS="$PROJECT_ROOT/build/host-tools/lib"
+fi
 [[ -x "$SQUASHFS" ]] || die "mksquashfs not found"
 rm -f "$SQUASHFS_IMG"
-"$SQUASHFS" "$ROOTFS" "$SQUASHFS_IMG" \
-  -comp zstd -Xcompression-level 15 -b 1M -noappend -no-progress \
-  -e proc/* -e sys/* -e dev/* -e run/* -e tmp/* \
-  -e var/tmp/* -e var/cache/distfiles -e var/cache/binpkgs \
-  -e var/log/*
+if [[ -n "$SQUASHFS_LIBS" ]]; then
+  LD_LIBRARY_PATH="$SQUASHFS_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    "$SQUASHFS" "$ROOTFS" "$SQUASHFS_IMG" \
+    -comp zstd -Xcompression-level 15 -b 1M -noappend -no-progress \
+    -e proc/* -e sys/* -e dev/* -e run/* -e tmp/* \
+    -e var/tmp/* -e var/cache/distfiles -e var/cache/binpkgs \
+    -e var/log/*
+else
+  "$SQUASHFS" "$ROOTFS" "$SQUASHFS_IMG" \
+    -comp zstd -Xcompression-level 15 -b 1M -noappend -no-progress \
+    -e proc/* -e sys/* -e dev/* -e run/* -e tmp/* \
+    -e var/tmp/* -e var/cache/distfiles -e var/cache/binpkgs \
+    -e var/log/*
+fi
 
 log "Writing GRUB configuration ..."
 cat > "$STAGE/boot/grub/grub.cfg" <<EOF
