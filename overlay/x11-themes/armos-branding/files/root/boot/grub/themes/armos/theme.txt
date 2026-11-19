@@ -1,26 +1,12 @@
 title-text: "ARMOS 1.0 GEN"
-title-font: "Noto Sans Regular 26"
-title-color: "#E6EAF0"
 desktop-image: "background.png"
-desktop-color: "#0E1014"
-terminal-font: "Noto Sans Mono Regular 14"
-
-+ title {
-    left = 8%
-    top = 12%
-    width = 84%
-    height = 10%
-    text-font = "Noto Sans Regular 26"
-    text-color = "#E6EAF0"
-    align = "left"
-}
+desktop-color: "#0E1116"
 
 + boot_menu {
     left = 8%
-    top = 36%
-    width = 58%
-    height = 38%
-    item_font = "Noto Sans Regular 16"
+    top = 32%
+    width = 60%
+    height = 40%
     item_color = "#C9D3E0"
     selected_item_color = "#4C8DFF"
     item_height = 34
@@ -32,7 +18,7 @@ terminal-font: "Noto Sans Mono Regular 14"
     id = "__timeout__"
     left = 8%
     top = 78%
-    width = 58%
+    width = 60%
     height = 6
     bg_color = "#22262C"
     fg_color = "#4C8DFF"

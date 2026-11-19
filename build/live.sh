@@ -142,11 +142,11 @@ if [ -f /boot/grub/themes/armos/fonts/terminal-14.pf2 ]; then
     loadfont /boot/grub/themes/armos/fonts/terminal-14.pf2
 fi
 
-terminal_output gfxterm
-
 if [ -f /boot/grub/themes/armos/theme.txt ]; then
     set theme=/boot/grub/themes/armos/theme.txt
 fi
+
+terminal_output gfxterm
 
 menuentry "ARMOS 1.0 GEN — Live" {
     linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.overlay.overlayfs=1 console=tty0 console=ttyS0,115200 quiet splash loglevel=4 plymouth.ignore-serial-consoles
