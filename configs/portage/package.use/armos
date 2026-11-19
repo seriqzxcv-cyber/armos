@@ -8,6 +8,9 @@ sys-fs/btrfs-progs -man
 x11-misc/lightdm gtk
 x11-misc/lightdm-gtk-greeter branding
 app-admin/calamares livecd
+# Calamares' Python bindings need boost/python and libpwquality/python.
+dev-libs/boost python
+dev-libs/libpwquality python
 media-video/pipewire sound-server
 dev-libs/libisoburn frontend
 www-client/firefox-bin pulseaudio
