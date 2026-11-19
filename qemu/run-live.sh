@@ -25,8 +25,17 @@ else
 fi
 
 DISPLAY_ARGS=(-display gtk)
+SERIAL_ARGS=(-serial mon:stdio)
 if [[ "${HEADLESS:-0}" == "1" ]]; then
   DISPLAY_ARGS=(-display none)
+fi
+
+MONITOR_ARGS=()
+if [[ -n "${MONITOR_SOCK:-}" ]]; then
+  MONITOR_ARGS=(-monitor "unix:${MONITOR_SOCK},server,nowait")
+  if [[ -n "${SERIAL_LOG:-}" ]]; then
+    SERIAL_ARGS=(-serial "file:${SERIAL_LOG}")
+  fi
 fi
 
 DISK_ARGS=()
@@ -73,5 +82,6 @@ exec qemu-system-x86_64 \
   -device virtio-rng-pci \
   -netdev user,id=net0 -device virtio-net-pci,netdev=net0 \
   "${DISPLAY_ARGS[@]}" \
-  -serial mon:stdio \
+  "${SERIAL_ARGS[@]}" \
+  "${MONITOR_ARGS[@]}" \
   -no-reboot

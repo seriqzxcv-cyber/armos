@@ -43,7 +43,7 @@ in_chroot '
       sed -i "s|^GRUB_TIMEOUT=.*|GRUB_TIMEOUT=10|" /etc/default/grub
       grep -q "^GRUB_TIMEOUT=" /etc/default/grub || echo "GRUB_TIMEOUT=10" >> /etc/default/grub
       grep -q "^GRUB_CMDLINE_LINUX_DEFAULT=" /etc/default/grub || \
-        echo 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"' >> /etc/default/grub
+        echo "GRUB_CMDLINE_LINUX_DEFAULT=\"quiet splash\"" >> /etc/default/grub
       grep -q "^GRUB_GFXMODE=" /etc/default/grub || \
         echo 'GRUB_GFXMODE="1280x800x32,1920x1080x32,auto"' >> /etc/default/grub
     fi

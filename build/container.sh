@@ -27,7 +27,7 @@ args=(
 )
 
 # Pass build parameters that scripts read from the environment.
-for var in SIZE IMAGE ISO_NAME ISO_LABEL PERSIST_LABEL; do
+for var in SIZE IMAGE ISO_NAME ISO_LABEL PERSIST_LABEL KVER; do
   if [[ -n "${!var:-}" ]]; then
     args+=(-e "$var=${!var}")
   fi
