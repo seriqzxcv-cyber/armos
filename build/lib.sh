@@ -31,13 +31,15 @@ setup_mounts() {
   mountpoint -q "$ROOTFS/var/cache/distfiles" || mount --bind "$DISTFILES_DIR" "$ROOTFS/var/cache/distfiles"
   mountpoint -q "$ROOTFS/var/cache/binpkgs"   || mount --bind "$BINPKGS_DIR"   "$ROOTFS/var/cache/binpkgs"
   mountpoint -q "$ROOTFS/var/db/repos/armos"  || mount --bind "$OVERLAY_DIR"  "$ROOTFS/var/db/repos/armos"
+  mkdir -p "$ROOTFS/armos"
+  mountpoint -q "$ROOTFS/armos" || mount --bind "$PROJECT_ROOT" "$ROOTFS/armos"
   cp -L /etc/resolv.conf "$ROOTFS/etc/resolv.conf"
   trap teardown_mounts EXIT
 }
 
 teardown_mounts() {
   set +e
-  for m in var/db/repos/armos var/cache/binpkgs var/cache/distfiles run dev sys proc; do
+  for m in armos var/db/repos/armos var/cache/binpkgs var/cache/distfiles run dev sys proc; do
     if mountpoint -q "$ROOTFS/$m"; then
       umount -R "$ROOTFS/$m" 2>/dev/null || umount -l "$ROOTFS/$m" 2>/dev/null
     fi

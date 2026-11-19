@@ -3,6 +3,7 @@ build/cache/
 build/rootfs/
 build/kernel-install/
 build/kernel-work/
+build/live/
 build/*.img
 out/*
 !out/.gitkeep
@@ -14,3 +15,6 @@ out/*
 
 # Rendered assets
 assets/generated/
+
+# Host-provided build helpers
+build/host-tools/
