@@ -48,6 +48,8 @@
         <value type="string" value="xfce4-terminal.desktop"/>
         <value type="string" value="libreoffice-writer.desktop"/>
         <value type="string" value="armos-center.desktop"/>
+        <value type="string" value="armos-settings.desktop"/>
+        <value type="string" value="armos-quicksettings.desktop"/>
         <value type="string" value="xfce4-settings-manager.desktop"/>
       </property>
     </property>

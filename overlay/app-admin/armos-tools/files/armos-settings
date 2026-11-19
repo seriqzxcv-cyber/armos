@@ -1,0 +1,164 @@
+#!/usr/bin/env python3
+"""ARMOS Settings — appearance controls in the ARMOS style."""
+
+import os
+import sys
+
+sys.path.insert(0, "/usr/lib/armos")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("GdkPixbuf", "2.0")
+from gi.repository import GdkPixbuf, Gtk  # noqa: E402
+
+import armos_common as common  # noqa: E402
+
+ACCENTS = [
+    ("Мuted blue", "#4C8DFF"),
+    ("Серый", "#8B95A5"),
+    ("Зелёный", "#4CAF87"),
+    ("Тёплый", "#E08A5B"),
+]
+THEMES = [("Тёмная", "Arc-Dark"), ("Светлая", "Adwaita")]
+
+
+def section(label):
+    widget = Gtk.Label(label=label, xalign=0)
+    widget.get_style_context().add_class("tile-title")
+    return widget
+
+
+class Settings(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.armos.Settings")
+
+    def do_activate(self):
+        common.apply_theme()
+        window = Gtk.ApplicationWindow(application=self, title="Оформление ARMOS")
+        window.set_default_size(720, 640)
+        window.set_position(Gtk.WindowPosition.CENTER)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        outer.set_border_width(24)
+        window.add(outer)
+
+        title = Gtk.Label(label="Оформление", xalign=0)
+        title.get_style_context().add_class("title")
+        outer.pack_start(title, False, False, 0)
+        sub = Gtk.Label(
+            label="Обои, акцент, тема и курсор применяются к текущему сеансу.",
+            xalign=0,
+        )
+        sub.get_style_context().add_class("subtitle")
+        outer.pack_start(sub, False, False, 0)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        outer.pack_start(scroll, True, True, 0)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        content.set_border_width(4)
+        scroll.add(content)
+
+        # --- wallpapers ---
+        content.pack_start(section("Обои"), False, False, 0)
+        grid = Gtk.IconView()
+        grid.set_pixbuf_column(0)
+        grid.set_text_column(1)
+        grid.set_item_width(180)
+        grid.set_columns(3)
+        model = Gtk.ListStore(GdkPixbuf.Pixbuf, str, str)
+        for path in common.wallpapers():
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(path, 180, 112, True)
+            except Exception:
+                continue
+            model.append([pixbuf, common.wallpaper_name(path), path])
+        grid.set_model(model)
+        content.pack_start(grid, False, False, 0)
+
+        def choose_wallpaper(_view, path):
+            if common.set_wallpaper(path):
+                common.message(window, "Обои применены: " + os.path.basename(path))
+            else:
+                common.message(window, "Не удалось применить обои.", Gtk.MessageType.ERROR)
+
+        grid.connect("item-activated", lambda view, path: choose_wallpaper(view, model[path][2]))
+
+        # --- accent ---
+        content.pack_start(section("Акцент"), False, False, 0)
+        accents = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        current = common.get_accent()
+        for name, color in ACCENTS:
+            button = Gtk.ToggleButton(label=name)
+            button.set_active(color.lower() == current.lower())
+            button.connect("clicked", lambda *_btn, c=color: apply_accent(c))
+            accents.pack_start(button, False, False, 0)
+        content.pack_start(accents, False, False, 0)
+
+        def apply_accent(color):
+            try:
+                common.set_accent(color)
+            except (OSError, ValueError) as exc:
+                common.message(window, str(exc), Gtk.MessageType.ERROR)
+                return
+            common.message(
+                window,
+                "Акцент изменён. Перезапустите приложения ARMOS, "
+                "чтобы увидеть новый цвет.",
+            )
+
+        # --- theme ---
+        content.pack_start(section("Тема интерфейса"), False, False, 0)
+        themes = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        active_theme = common.xfconf_get("xsettings", "/Net/ThemeName", "Arc-Dark")
+        for name, value in THEMES:
+            button = Gtk.ToggleButton(label=name)
+            button.set_active(value == active_theme)
+            button.connect(
+                "clicked",
+                lambda *_btn, v=value: common.xfconf_set("xsettings", "/Net/ThemeName", v),
+            )
+            themes.pack_start(button, False, False, 0)
+        content.pack_start(themes, False, False, 0)
+
+        # --- scale and cursor ---
+        content.pack_start(section("Масштаб и курсор"), False, False, 0)
+        controls = Gtk.Grid(column_spacing=12, row_spacing=10)
+        content.pack_start(controls, False, False, 0)
+
+        controls.attach(Gtk.Label(label="Масштаб интерфейса", xalign=0), 0, 0, 1, 1)
+        scale = Gtk.SpinButton()
+        scale.set_range(0.8, 2.0)
+        scale.set_digits(1)
+        scale.set_increments(0.1, 0.2)
+        try:
+            scale.set_value(float(common.xfconf_get("xsettings", "/Gtk/ScaleFactor", "1")))
+        except ValueError:
+            scale.set_value(1.0)
+        scale.connect(
+            "value-changed",
+            lambda widget: common.xfconf_set(
+                "xsettings", "/Gtk/ScaleFactor", "{:.1f}".format(widget.get_value()), "double"
+            ),
+        )
+        controls.attach(scale, 1, 0, 1, 1)
+
+        controls.attach(Gtk.Label(label="Размер курсора", xalign=0), 0, 1, 1, 1)
+        cursor = Gtk.ComboBoxText()
+        for name, value in (("24 px", "24"), ("32 px", "32"), ("48 px", "48")):
+            cursor.append(value, name)
+        cursor.set_active_id(common.xfconf_get("xsettings", "/Gtk/CursorThemeSize", "24"))
+        cursor.connect(
+            "changed",
+            lambda widget: common.xfconf_set(
+                "xsettings", "/Gtk/CursorThemeSize", widget.get_active_id(), "int"
+            ),
+        )
+        controls.attach(cursor, 1, 1, 1, 1)
+
+        window.show_all()
+
+
+if __name__ == "__main__":
+    sys.exit(Settings().run(sys.argv))

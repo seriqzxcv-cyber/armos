@@ -42,7 +42,7 @@ in_chroot '
   fi
 '
 
-KVER=$(ls "$ROOTFS/lib/modules" 2>/dev/null | sort -V | tail -1)
+KVER="${KVER:-$(ls "$ROOTFS/lib/modules" 2>/dev/null | sort -V | tail -1)}"
 [[ -n "$KVER" ]] || die "No kernel found: run 'make base'"
 log "Kernel: $KVER"
 

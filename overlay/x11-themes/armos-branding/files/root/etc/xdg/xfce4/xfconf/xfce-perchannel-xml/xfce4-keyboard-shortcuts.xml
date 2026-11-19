@@ -25,6 +25,7 @@
       <property name="&lt;Super&gt;e" type="string" value="thunar"/>
       <property name="&lt;Super&gt;c" type="string" value="armos-center"/>
       <property name="&lt;Super&gt;s" type="string" value="armos-store"/>
+      <property name="&lt;Super&gt;q" type="string" value="armos-quicksettings"/>
       <property name="&lt;Primary&gt;&lt;Alt&gt;f" type="string" value="thunar"/>
       <property name="&lt;Primary&gt;&lt;Alt&gt;Escape" type="string" value="xkill"/>
       <property name="&lt;Primary&gt;&lt;Shift&gt;Escape" type="string" value="xfce4-taskmanager"/>

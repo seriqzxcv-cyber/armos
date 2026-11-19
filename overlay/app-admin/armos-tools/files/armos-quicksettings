@@ -1,0 +1,154 @@
+#!/usr/bin/env python3
+"""ARMOS Quick Settings — Wi-Fi, Bluetooth, sound, brightness and shortcuts."""
+
+import subprocess
+import sys
+
+sys.path.insert(0, "/usr/lib/armos")
+
+import gi
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk  # noqa: E402
+
+import armos_common as common  # noqa: E402
+
+
+def run(argv, stdin=None):
+    try:
+        return subprocess.run(
+            argv, input=stdin, capture_output=True, text=True, timeout=5
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def output_name():
+    text = run(["xrandr", "--query"])
+    for line in text.splitlines():
+        if " connected" in line:
+            return line.split()[0]
+    return ""
+
+
+class QuickSettings(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="org.armos.QuickSettings")
+
+    def do_activate(self):
+        common.apply_theme()
+        window = Gtk.ApplicationWindow(application=self, title="Быстрые настройки")
+        window.set_default_size(360, 440)
+        window.set_position(Gtk.WindowPosition.MOUSE)
+        window.set_resizable(False)
+
+        outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        outer.set_border_width(20)
+        window.add(outer)
+
+        title = Gtk.Label(label="Быстрые настройки", xalign=0)
+        title.get_style_context().add_class("title")
+        outer.pack_start(title, False, False, 0)
+
+        def switch_row(name, initial, callback):
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            label = Gtk.Label(label=name, xalign=0)
+            label.get_style_context().add_class("tile-title")
+            toggle = Gtk.Switch()
+            toggle.set_active(initial)
+            toggle.set_halign(Gtk.Align.END)
+            toggle.connect("notify::active", callback)
+            box.pack_start(label, True, True, 0)
+            box.pack_start(toggle, False, False, 0)
+            button = Gtk.Button()
+            button.get_style_context().add_class("tile")
+            button.add(box)
+            outer.pack_start(button, False, False, 0)
+            return toggle
+
+        # Wi-Fi
+        wifi_state = run(["nmcli", "radio", "wifi"]) == "enabled"
+
+        def wifi_toggle(toggle, *_):
+            run(["nmcli", "radio", "wifi", "on" if toggle.get_active() else "off"])
+
+        switch_row("Wi-Fi", wifi_state, wifi_toggle)
+
+        # Bluetooth
+        bt_text = run(["bluetoothctl"], stdin="show\nquit\n")
+        bt_state = "Powered: yes" in bt_text
+
+        def bluetooth_toggle(toggle, *_):
+            run(
+                ["bluetoothctl"],
+                stdin="power {}\nquit\n".format("on" if toggle.get_active() else "off"),
+            )
+
+        switch_row("Bluetooth", bt_state, bluetooth_toggle)
+
+        # Airplane mode
+        airplane = run(["nmcli", "networking"]) == "disabled"
+
+        def airplane_toggle(toggle, *_):
+            run(["nmcli", "networking", "off" if toggle.get_active() else "on"])
+
+        switch_row("Авиарежим", airplane, airplane_toggle)
+
+        # Sound mute
+        muted = "yes" in run(["pactl", "get-sink-mute", "@DEFAULT_SINK@"])
+
+        def mute_toggle(toggle, *_):
+            run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "1" if toggle.get_active() else "0"])
+
+        switch_row("Звук выключен", muted, mute_toggle)
+
+        # Brightness
+        dim_label = Gtk.Label(label="Яркость: нормальная", xalign=0)
+        dim_label.get_style_context().add_class("tile-title")
+        dim_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        dim_box.pack_start(dim_label, True, True, 0)
+        dim_button = Gtk.Button(label="50%")
+        dim_button.get_style_context().add_class("tile")
+
+        def dim(_button):
+            output = output_name()
+            if output and dim_button.get_label() == "50%":
+                run(["xrandr", "--output", output, "--brightness", "0.5"])
+                dim_button.set_label("норма")
+                dim_label.set_text("Яркость: снижена")
+            elif output:
+                run(["xrandr", "--output", output, "--brightness", "1.0"])
+                dim_button.set_label("50%")
+                dim_label.set_text("Яркость: нормальная")
+            else:
+                dim_button.set_label("нет вывода")
+
+        dim_button.connect("clicked", dim)
+        dim_box.pack_start(dim_button, False, False, 0)
+        outer.pack_start(dim_box, False, False, 0)
+
+        outer.pack_start(Gtk.Separator(), False, False, 4)
+
+        def action(label, icon, argv):
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            image = Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.LARGE_TOOLBAR)
+            text = Gtk.Label(label=label, xalign=0)
+            text.get_style_context().add_class("tile-title")
+            box.pack_start(image, False, False, 0)
+            box.pack_start(text, False, False, 0)
+            button = Gtk.Button()
+            button.get_style_context().add_class("tile")
+            button.add(box)
+            button.connect("clicked", lambda *_: common.launch(argv))
+            outer.pack_start(button, False, False, 0)
+
+        action("Сети", "network-workgroup", ["nm-connection-editor"])
+        action("Звук", "audio-volume-high", ["pavucontrol"])
+        action("Оформление ARMOS", "preferences-desktop-theme", ["armos-settings"])
+        action("Снимок экрана", "applets-screenshooter", ["xfce4-screenshooter"])
+
+        window.show_all()
+
+
+if __name__ == "__main__":
+    sys.exit(QuickSettings().run(sys.argv))

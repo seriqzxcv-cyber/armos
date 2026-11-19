@@ -25,16 +25,23 @@ src_install() {
 		"${FILESDIR}/armos-center" \
 		"${FILESDIR}/armos-store" \
 		"${FILESDIR}/armos-updater" \
-		"${FILESDIR}/armos-desklet"
+		"${FILESDIR}/armos-desklet" \
+		"${FILESDIR}/armos-settings" \
+		"${FILESDIR}/armos-quicksettings" \
+		"${FILESDIR}/armos-first-run" \
+		"${FILESDIR}/armos"
 
 	insinto /usr/share/applications
 	doins \
 		"${FILESDIR}/armos-welcome.desktop" \
 		"${FILESDIR}/armos-center.desktop" \
 		"${FILESDIR}/armos-store.desktop" \
-		"${FILESDIR}/armos-updater.desktop"
+		"${FILESDIR}/armos-updater.desktop" \
+		"${FILESDIR}/armos-settings.desktop" \
+		"${FILESDIR}/armos-quicksettings.desktop"
 
 	insinto /etc/xdg/autostart
 	newins "${FILESDIR}/armos-welcome-autostart.desktop" armos-welcome.desktop
 	newins "${FILESDIR}/armos-desklet-autostart.desktop" armos-desklet.desktop
+	newins "${FILESDIR}/armos-first-run-autostart.desktop" armos-first-run.desktop
 }

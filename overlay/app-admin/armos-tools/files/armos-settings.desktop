@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS Appearance
+Name[ru]=Оформление ARMOS
+Comment=Wallpapers, accent, theme and cursor settings
+Comment[ru]=Обои, акцент, тема и курсор
+Exec=armos-settings
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=Settings;DesktopSettings;XFCE;
+StartupNotify=true

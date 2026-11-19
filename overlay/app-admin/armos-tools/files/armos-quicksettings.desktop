@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS Quick Settings
+Name[ru]=Быстрые настройки ARMOS
+Comment=Wi-Fi, Bluetooth, sound and brightness toggles
+Comment[ru]=Wi-Fi, Bluetooth, звук и яркость
+Exec=armos-quicksettings
+Icon=preferences-system
+Terminal=false
+Categories=Settings;XFCE;
+StartupNotify=true

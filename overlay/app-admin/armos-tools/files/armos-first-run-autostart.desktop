@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS First Run
+Name[ru]=Первый запуск ARMOS
+Comment=One-time ARMOS setup wizard
+Comment[ru]=Однократный мастер настройки ARMOS
+Exec=armos-first-run
+Icon=armos-logo
+Terminal=false
+NoDisplay=true
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=6

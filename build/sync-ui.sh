@@ -37,14 +37,28 @@ install -Dm644 "$TOOLS/armos_common.py" "$R/usr/lib/armos/armos_common.py"
 install -Dm755 "$TOOLS/armos-desklet" "$R/usr/bin/armos-desklet"
 install -Dm644 "$TOOLS/armos-desklet-autostart.desktop" \
   "$R/etc/xdg/autostart/armos-desklet.desktop"
+for app in armos armos-settings armos-quicksettings armos-first-run; do
+  install -Dm755 "$TOOLS/$app" "$R/usr/bin/$app"
+done
+for desktop in armos-settings.desktop armos-quicksettings.desktop; do
+  install -Dm644 "$TOOLS/$desktop" "$R/usr/share/applications/$desktop"
+done
+install -Dm644 "$TOOLS/armos-first-run-autostart.desktop" \
+  "$R/etc/xdg/autostart/armos-first-run.desktop"
 
 chown -R 0:0 \
   "$R/usr/share/backgrounds/armos" \
   "$R/usr/bin/armos-desktop-defaults" \
+  "$R/usr/bin/armos" \
   "$R/usr/bin/armos-desklet" \
+  "$R/usr/bin/armos-settings" \
+  "$R/usr/bin/armos-quicksettings" \
+  "$R/usr/bin/armos-first-run" \
+  "$R/usr/share/applications/armos-settings.desktop" \
+  "$R/usr/share/applications/armos-quicksettings.desktop" \
   "$R/usr/lib/armos/armos_common.py" \
   "$R/etc/gtk-3.0/gtk.css" \
-  "$R/etc/xdg/autostart/armos-desklet.desktop" \
+  "$R/etc/xdg/autostart" \
   "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml" \
   "$R/etc/xdg/mimeapps.list" \
   "$R/usr/share/armos/config"

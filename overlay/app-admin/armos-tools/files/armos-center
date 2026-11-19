@@ -99,6 +99,24 @@ class Center(Gtk.Application):
 
         tiles = [
             (
+                "Оформление ARMOS",
+                "Обои, акцент, тема и курсор",
+                "preferences-desktop-theme",
+                run(["armos-settings"]),
+            ),
+            (
+                "Монитор ARMOS",
+                "ЦП, ОЗУ, сеть, диск и температура",
+                "utilities-system-monitor",
+                run(["armos-monitor"]),
+            ),
+            (
+                "Быстрые настройки",
+                "Wi-Fi, Bluetooth, звук и яркость",
+                "preferences-system",
+                run(["armos-quicksettings"]),
+            ),
+            (
                 "Обновления",
                 "Синхронизация репозиториев и обновление системы",
                 "system-software-update",
@@ -111,8 +129,8 @@ class Center(Gtk.Application):
                 run(["armos-store"]),
             ),
             (
-                "Внешний вид",
-                "Темы, значки, шрифты и обои",
+                "Внешний вид XFCE",
+                "Стандартные настройки тем и значков",
                 "preferences-desktop-theme",
                 run(["xfce4-appearance-settings"]),
             ),
@@ -139,6 +157,12 @@ class Center(Gtk.Application):
                 "Раскладка, сочетания клавиш, мышь",
                 "input-keyboard",
                 run(["xfce4-keyboard-settings"]),
+            ),
+            (
+                "Первый запуск",
+                "Мастер начальной настройки ARMOS",
+                "system-setup",
+                run(["armos-first-run"]),
             ),
             (
                 "О системе",

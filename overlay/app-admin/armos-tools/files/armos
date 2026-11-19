@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""ARMOS CLI — small command-line companion to the ARMOS desktop."""
+
+import os
+import platform
+import shutil
+import subprocess
+import sys
+
+sys.path.insert(0, "/usr/lib/armos")
+import armos_common as common  # noqa: E402
+
+HELP = """ARMOS 1.0 «GEN» — команды:
+
+  armos info                  краткая информация о системе
+  armos status                статус live-сессии и рабочего стола
+  armos theme dark|light      переключить тему интерфейса
+  armos wallpaper <имя|путь>  сменить обои
+  armos wallpapers            список доступных обоев
+  armos accent #RRGGBB        задать цвет акцента
+  armos update                открытьARMOS Updater
+  armos settings              открыть оформление ARMOS
+  armos help                  эта справка
+"""
+
+
+def info():
+    def read(path):
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as fh:
+                return fh.read().strip()
+        except OSError:
+            return "—"
+
+    release = read("/usr/share/armos/os-release")
+    pretty = ""
+    for line in release.splitlines():
+        if line.startswith("PRETTY_NAME="):
+            pretty = line.split("=", 1)[1].strip('"')
+    total, available = 0, 0
+    with open("/proc/meminfo", "r", encoding="ascii") as fh:
+        for line in fh:
+            if line.startswith("MemTotal:"):
+                total = int(line.split()[1])
+            elif line.startswith("MemAvailable:"):
+                available = int(line.split()[1])
+    stat = os.statvfs("/")
+    used = (stat.f_blocks - stat.f_bfree) * stat.f_frsize / 1024 ** 3
+    size = stat.f_blocks * stat.f_frsize / 1024 ** 3
+    print("Система:      {}".format(pretty or "ARMOS 1.0 GEN"))
+    print("Ядро:         {}".format(platform.release()))
+    print("Архитектура:  {}".format(platform.machine()))
+    print("Пользователь: {}".format(os.environ.get("USER", "—")))
+    print("ОЗУ:          {:.1f} / {:.1f} ГБ".format((total - available) / 1024 ** 2, total / 1024 ** 2))
+    print("Диск (/):     {:.1f} / {:.1f} ГБ".format(used, size))
+    print("Акцент:       {}".format(common.get_accent()))
+    print("Обои:         {}".format(
+        common.xfconf_get("xfce4-desktop", "/backdrop/screen0/monitor0/workspace0/last-image", "—")
+    ))
+
+
+def status():
+    print("ARMOS live:   {}".format("да" if common.is_live() else "нет"))
+    print("Сеанс:        {}".format(os.environ.get("XDG_SESSION_TYPE", "неизвестен")))
+    print("Дисплей:      {}".format(os.environ.get("DISPLAY", "—")))
+    print("Тема:         {}".format(common.xfconf_get("xsettings", "/Net/ThemeName", "—")))
+    for name in ("xfce4-session", "xfwm4", "xfce4-panel", "armos-desklet"):
+        running = subprocess.run(
+            ["pgrep", "-f", name], capture_output=True
+        ).returncode == 0
+        print("{:<14} {}".format(name + ":", "работает" if running else "не запущен"))
+
+
+def main(argv):
+    if not argv or argv[0] in ("help", "-h", "--help"):
+        print(HELP, end="")
+        return 0
+    command, args = argv[0], argv[1:]
+
+    if command == "info":
+        info()
+    elif command == "status":
+        status()
+    elif command == "theme":
+        if not args or args[0] not in ("dark", "light"):
+            print("Использование: armos theme dark|light", file=sys.stderr)
+            return 2
+        theme = "Arc-Dark" if args[0] == "dark" else "Adwaita"
+        ok = common.xfconf_set("xsettings", "/Net/ThemeName", theme)
+        print("Тема: " + theme if ok else "Не удалось изменить тему")
+        return 0 if ok else 1
+    elif command == "wallpapers":
+        for path in common.wallpapers():
+            print(common.wallpaper_name(path) + "\t" + path)
+    elif command == "wallpaper":
+        if not args:
+            print("Использование: armos wallpaper <имя|путь>", file=sys.stderr)
+            return 2
+        target = args[0]
+        if not os.path.exists(target):
+            matches = [p for p in common.wallpapers()
+                       if common.wallpaper_name(p) == target or target in p]
+            if not matches:
+                print("Обои не найдены: " + target, file=sys.stderr)
+                return 1
+            target = matches[0]
+        ok = common.set_wallpaper(target)
+        print("Обои: " + target if ok else "Не удалось изменить обои")
+        return 0 if ok else 1
+    elif command == "accent":
+        if not args:
+            print("Использование: armos accent #RRGGBB", file=sys.stderr)
+            return 2
+        try:
+            print("Акцент: " + common.set_accent(args[0]))
+        except ValueError:
+            print("Некорректный цвет: " + args[0], file=sys.stderr)
+            return 2
+    elif command == "update":
+        if shutil.which("armos-updater") is None:
+            print("ARMOS Updater не установлен", file=sys.stderr)
+            return 1
+        subprocess.Popen(["armos-updater"], start_new_session=True)
+    elif command == "settings":
+        if shutil.which("armos-settings") is None:
+            print("ARMOS Settings не установлен", file=sys.stderr)
+            return 1
+        subprocess.Popen(["armos-settings"], start_new_session=True)
+    else:
+        print("Неизвестная команда: " + command, file=sys.stderr)
+        print(HELP, end="", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

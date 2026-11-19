@@ -13,12 +13,53 @@ from gi.repository import GLib, Gtk  # noqa: E402
 APP_NAME = "ARMOS"
 APP_VERSION = "1.0 (GEN)"
 
+DEFAULT_ACCENT = "#4C8DFF"
+CONFIG_DIR = os.path.expanduser("~/.config/armos")
+
+
+def get_accent():
+    """Return the user-selected accent, falling back to the ARMOS blue."""
+    try:
+        with open(os.path.join(CONFIG_DIR, "accent"), "r", encoding="ascii") as fh:
+            value = fh.read().strip()
+        if len(value) == 7 and value.startswith("#"):
+            int(value[1:], 16)
+            return value
+    except (OSError, ValueError):
+        pass
+    return DEFAULT_ACCENT
+
+
+def set_accent(value):
+    """Persist a new accent and add a GTK3 override for running applications."""
+    if not (len(value) == 7 and value.startswith("#")):
+        raise ValueError("accent must be #RRGGBB")
+    int(value[1:], 16)
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    with open(os.path.join(CONFIG_DIR, "accent"), "w", encoding="ascii") as fh:
+        fh.write(value + "\n")
+    gtk_dir = os.path.expanduser("~/.config/gtk-3.0")
+    os.makedirs(gtk_dir, exist_ok=True)
+    with open(os.path.join(gtk_dir, "gtk.css"), "w", encoding="utf-8") as fh:
+        fh.write(
+            "/* ARMOS accent override */\n"
+            "@define-color theme_selected_bg_color {0};\n"
+            "@define-color theme_focus_bg_color {0};\n"
+            "@define-color accent_color {0};\n"
+            "selection, *:selected {{ background-color: {0}; color: #FFFFFF; }}\n"
+            "progressbar progress, levelbar block.filled {{ background-color: {0}; }}\n"
+            .format(value)
+        )
+    return value
+
+
+ACCENT = get_accent()
+
 BACKGROUND = "#0E1014"
 SURFACE = "#16181D"
 SURFACE_2 = "#1D2026"
 TEXT = "#E6EAF0"
 MUTED = "#8B929D"
-ACCENT = "#4C8DFF"
 BORDER = "#2A2D33"
 
 CSS = f"""
@@ -228,3 +269,68 @@ def message(parent, text, kind=Gtk.MessageType.INFO):
     )
     dialog.run()
     dialog.destroy()
+
+
+def xfconf_get(channel, prop, default=""):
+    """Read an xfconf property in the current session (or return default)."""
+    try:
+        result = subprocess.run(
+            ["xfconf-query", "-c", channel, "-p", prop],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return default
+
+
+def xfconf_set(channel, prop, value, value_type="string"):
+    """Set (or create) an xfconf property in the current session."""
+    commands = [
+        ["xfconf-query", "-c", channel, "-p", prop, "-s", value],
+        ["xfconf-query", "-c", channel, "-p", prop, "-n", "-t", value_type, "-s", value],
+    ]
+    for command in commands:
+        try:
+            result = subprocess.run(command, capture_output=True, timeout=5)
+            if result.returncode == 0:
+                return True
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return False
+
+
+WALLPAPER_DIR = "/usr/share/backgrounds/armos"
+
+
+def wallpapers():
+    return sorted(glob.glob(os.path.join(WALLPAPER_DIR, "*.png")))
+
+
+def wallpaper_name(path):
+    return os.path.basename(path).replace("armos-", "").replace(".png", "")
+
+
+def set_wallpaper(path):
+    """Apply a wallpaper to every Xfce 4.20 monitor/workspace key."""
+    if not os.path.exists(path):
+        return False
+    props = subprocess.run(
+        ["xfconf-query", "-c", "xfce4-desktop", "-l"],
+        capture_output=True, text=True, timeout=5,
+    ).stdout.splitlines()
+    prefixes = set()
+    for prop in props:
+        if prop.endswith("/last-image") and prop.startswith("/backdrop/"):
+            prefixes.add(prop[: -len("/last-image")])
+    for prefix in prefixes:
+        xfconf_set("xfce4-desktop", prefix + "/last-image", path)
+        xfconf_set("xfce4-desktop", prefix + "/image-style", "5", "int")
+    # Also cover the common connector naming used by QEMU and laptops.
+    for name in ("Virtual-1", "eDP-1", "HDMI-A-1", "VGA-1"):
+        for workspace in range(4):
+            prefix = "/backdrop/screen0/monitor{}/workspace{}".format(name, workspace)
+            xfconf_set("xfce4-desktop", prefix + "/last-image", path)
+            xfconf_set("xfce4-desktop", prefix + "/image-style", "5", "int")
+    return True
