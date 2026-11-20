@@ -42,6 +42,12 @@ make qemu-live   # boot the live ISO (BIOS)
 UEFI=1 make qemu-live
 ```
 
+`make live` builds a **slim** image by default (`LIVE_SLIM=1`): the squashfs
+omits build toolchains, the Portage tree, unused firmware/locales/fonts/icons
+and the fallback kernel's modules, and uses zstd level 19. This keeps the ISO
+small enough for a single GitHub release asset. Use `LIVE_SLIM=0 make live` for
+an untrimmed image and `ZSTD_LEVEL=22` for maximum (slow) compression.
+
 Custom ARMOS kernel (variant 3, see [docs/KERNEL.md](docs/KERNEL.md)):
 
 ```bash

@@ -95,6 +95,105 @@ log "Installing live helpers ..."
 install -Dm755 "$PROJECT_ROOT/live/persistence/armos-persistence-init" \
   "$ROOTFS/usr/sbin/armos-persistence-init"
 
+# The live squashfs is the installed system, so build-tool chains, the Portage
+# tree, unused firmware/locales/fonts/icons and the fallback kernel modules are
+# left out.  They can be installed/synced on the installed system afterwards.
+# Set LIVE_SLIM=0 to build a full-size image instead.
+LIVE_SLIM="${LIVE_SLIM:-1}"
+# Keep the pseudo-filesystem mount points themselves: dracut/udev expect
+# /dev, /proc, /sys, /run and /tmp to exist in the root filesystem.  Exclude
+# only their contents (normally empty, but the caches may have leftovers).
+EXCLUDES=()
+for d in proc sys dev run tmp var/tmp var/cache/distfiles var/cache/binpkgs var/log; do
+  [[ -d "$ROOTFS/$d" ]] || continue
+  while IFS= read -r -d '' f; do
+    EXCLUDES+=("${f#$ROOTFS/}")
+  done < <(find "$ROOTFS/$d" -mindepth 1 -print0 2>/dev/null)
+done
+if [[ "$LIVE_SLIM" == "1" ]]; then
+  log "Applying slim live excludes ..."
+  in_chroot '
+    if [[ -f /usr/lib/locale/locale-archive ]]; then
+      rm -f /usr/lib/locale/locale-archive
+      command -v localedef >/dev/null || exit 0
+      localedef -i C -f UTF-8 C.utf8 2>/dev/null || true
+      localedef -i en_US -f UTF-8 en_US.utf8 2>/dev/null || true
+      localedef -i ru_RU -f UTF-8 ru_RU.utf8 2>/dev/null || true
+    fi
+  '
+
+  for p in \
+    var/db/repos/gentoo \
+    opt/rust-bin-* \
+    usr/lib/llvm usr/lib/clang usr/include usr/src \
+    usr/share/doc usr/share/man usr/share/gir-1.0 usr/share/sgml \
+    usr/share/gtk-doc usr/share/cmake usr/share/gcc-data \
+    usr/share/binutils-data usr/share/clc usr/share/mythes \
+    usr/share/vulkan usr/share/qt6 usr/share/help \
+    usr/share/icons/Papirus usr/share/icons/Papirus-Light \
+    usr/share/icons/breeze usr/share/icons/breeze-dark \
+    usr/share/icons/HighContrast usr/share/icons/AdwaitaLegacy \
+    usr/share/icons/elementaryXubuntu-dark \
+    usr/share/fonts/noto-emoji
+  do
+    for path in "$ROOTFS"/$p; do
+      [[ -e "$path" ]] && EXCLUDES+=("${path#$ROOTFS/}")
+    done
+  done
+
+  for d in "$ROOTFS"/usr/share/locale/*; do
+    [[ -d "$d" ]] || continue
+    n="${d##*/}"
+    case "$n" in
+      ru|ru_*|en|en_*|C|POSIX) ;;
+      *) EXCLUDES+=("usr/share/locale/$n") ;;
+    esac
+  done
+
+  # Keep only the firmware needed by common network/GPU hardware.  Intel's
+  # directory is huge but almost entirely iwlwifi; keep that subfolder.
+  for d in "$ROOTFS"/usr/lib/firmware/*/; do
+    n="${d%/}"; n="${n##*/}"
+    case "$n" in
+      brcm|i915|radeon|amdgpu|qca|cypress|rtl_nic|rtlwifi|rtl_bt|rtw88|realtek|ti-connectivity|ath10k|ath9k_htc|wfx|mwlwifi|amd-ucode)
+        ;;
+      intel)
+        for f in "$d"*; do
+          fn="${f##*/}"
+          [[ "$fn" == "iwlwifi" ]] && continue
+          EXCLUDES+=("usr/lib/firmware/intel/$fn")
+        done
+        ;;
+      *)
+        EXCLUDES+=("usr/lib/firmware/$n")
+        ;;
+    esac
+  done
+
+  # Only one kernel's modules are needed at runtime; the fallback kernel's
+  # modules are ~0.6 GiB uncompressed.
+  for d in "$ROOTFS"/usr/lib/modules/*/; do
+    n="${d%/}"; n="${n##*/}"
+    [[ "$n" == "$KVER" ]] && continue
+    EXCLUDES+=("usr/lib/modules/$n")
+  done
+
+  # Noto Sans/Mono Regular+Bold cover the UI and Cyrillic; drop the other
+  # ~2100 script/weight variants.
+  for f in "$ROOTFS"/usr/share/fonts/noto/*; do
+    n="${f##*/}"
+    case "$n" in
+      NotoSans-Regular.ttf|NotoSans-Bold.ttf|NotoSans-Italic.ttf|NotoSans-BoldItalic.ttf|NotoSansMono-Regular.ttf|NotoSansMono-Bold.ttf|NotoSerif-Regular.ttf|NotoSerif-Bold.ttf|fonts.dir|fonts.scale)
+        ;;
+      *) EXCLUDES+=("usr/share/fonts/noto/$n") ;;
+    esac
+  done
+  log "Excluding ${#EXCLUDES[@]} paths from the live squashfs"
+fi
+
+EXCLUDE_ARGS=()
+for p in "${EXCLUDES[@]}"; do EXCLUDE_ARGS+=(-e "$p"); done
+
 log "Building squashfs (this can take a while) ..."
 SQUASHFS=$(command -v mksquashfs || true)
 if [[ -n "$SQUASHFS" ]]; then
@@ -104,20 +203,17 @@ else
   SQUASHFS_LIBS="$PROJECT_ROOT/build/host-tools/lib"
 fi
 [[ -x "$SQUASHFS" ]] || die "mksquashfs not found"
+ZSTD_LEVEL="${ZSTD_LEVEL:-19}"
 rm -f "$SQUASHFS_IMG"
 if [[ -n "$SQUASHFS_LIBS" ]]; then
   LD_LIBRARY_PATH="$SQUASHFS_LIBS${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
     "$SQUASHFS" "$ROOTFS" "$SQUASHFS_IMG" \
-    -comp zstd -Xcompression-level 15 -b 1M -noappend -no-progress \
-    -e proc/* -e sys/* -e dev/* -e run/* -e tmp/* \
-    -e var/tmp/* -e var/cache/distfiles -e var/cache/binpkgs \
-    -e var/log/*
+    -comp zstd -Xcompression-level "$ZSTD_LEVEL" -b 1M -noappend -no-progress \
+    "${EXCLUDE_ARGS[@]}"
 else
   "$SQUASHFS" "$ROOTFS" "$SQUASHFS_IMG" \
-    -comp zstd -Xcompression-level 15 -b 1M -noappend -no-progress \
-    -e proc/* -e sys/* -e dev/* -e run/* -e tmp/* \
-    -e var/tmp/* -e var/cache/distfiles -e var/cache/binpkgs \
-    -e var/log/*
+    -comp zstd -Xcompression-level "$ZSTD_LEVEL" -b 1M -noappend -no-progress \
+    "${EXCLUDE_ARGS[@]}"
 fi
 
 log "Writing GRUB configuration ..."
