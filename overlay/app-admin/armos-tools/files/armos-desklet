@@ -19,7 +19,9 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gdk, GdkPixbuf, GLib, Gtk  # noqa: E402
 
-ACCENT = "#4C8DFF"
+import armos_common as common  # noqa: E402
+
+ACCENT = common.get_accent()
 BORDER = "#2A2D33"
 SURFACE = "rgba(18, 20, 24, 0.88)"
 TEXT = "#E6EAF0"

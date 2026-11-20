@@ -18,8 +18,11 @@ HELP = """ARMOS 1.0 «GEN» — команды:
   armos wallpaper <имя|путь>  сменить обои
   armos wallpapers            список доступных обоев
   armos accent #RRGGBB        задать цвет акцента
-  armos update                открытьARMOS Updater
+  armos update                открыть ARMOS Updater
   armos settings              открыть оформление ARMOS
+  armos center                открыть Центр ARMOS
+  armos monitor               открыть монитор ресурсов
+  armos store                 открыть магазин приложений
   armos help                  эта справка
 """
 
@@ -126,6 +129,16 @@ def main(argv):
             print("ARMOS Settings не установлен", file=sys.stderr)
             return 1
         subprocess.Popen(["armos-settings"], start_new_session=True)
+    elif command in ("center", "monitor", "store"):
+        appname = {
+            "center": "armos-center",
+            "monitor": "armos-monitor",
+            "store": "armos-store",
+        }[command]
+        if shutil.which(appname) is None:
+            print("{} не установлен".format(appname), file=sys.stderr)
+            return 1
+        subprocess.Popen([appname], start_new_session=True)
     else:
         print("Неизвестная команда: " + command, file=sys.stderr)
         print(HELP, end="", file=sys.stderr)

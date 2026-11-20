@@ -2,6 +2,8 @@
 """ARMOS First Run — short setup wizard shown once per user."""
 
 import os
+import shutil
+import subprocess
 import sys
 
 sys.path.insert(0, "/usr/lib/armos")
@@ -136,6 +138,27 @@ class FirstRun(Gtk.Application):
                     fh.write("\nexport TZ='{}'\n".format(zone))
             except OSError:
                 pass
+
+            # Make the choice system-wide, not just cosmetic.
+            zone_file = os.path.join("/usr/share/zoneinfo", zone)
+            if os.path.exists(zone_file):
+                if os.geteuid() == 0:
+                    try:
+                        if os.path.lexists("/etc/localtime"):
+                            os.remove("/etc/localtime")
+                        os.symlink(zone_file, "/etc/localtime")
+                        with open("/etc/timezone", "w") as fh:
+                            fh.write(zone + "\n")
+                    except OSError:
+                        pass
+                elif shutil.which("pkexec"):
+                    try:
+                        subprocess.run(
+                            ["pkexec", "ln", "-sfn", zone_file, "/etc/localtime"],
+                            capture_output=True, timeout=60,
+                        )
+                    except (OSError, subprocess.SubprocessError):
+                        pass
         self._assistant.destroy()
 
     def _install(self, *_):

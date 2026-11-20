@@ -40,36 +40,54 @@ for asset in armos.plymouth armos.script background.png logo.png bar-bg.png bar-
     "$R/usr/share/plymouth/themes/armos/$asset"
 done
 
-# ARMOS tools: shared palette and the new desktop widget.
+# ARMOS tools: install the full application set, not just the fast-sync subset.
 install -Dm644 "$TOOLS/armos_common.py" "$R/usr/lib/armos/armos_common.py"
-install -Dm755 "$TOOLS/armos-desklet" "$R/usr/bin/armos-desklet"
 install -Dm644 "$TOOLS/armos-desklet-autostart.desktop" \
   "$R/etc/xdg/autostart/armos-desklet.desktop"
-for app in armos armos-settings armos-quicksettings armos-first-run; do
+for app in armos armos-center armos-store armos-updater armos-welcome \
+          armos-desklet armos-monitor armos-settings armos-quicksettings \
+          armos-first-run; do
   install -Dm755 "$TOOLS/$app" "$R/usr/bin/$app"
 done
-for desktop in armos-settings.desktop armos-quicksettings.desktop; do
+for desktop in armos-center.desktop armos-store.desktop armos-updater.desktop \
+               armos-welcome.desktop armos-monitor.desktop armos-settings.desktop \
+               armos-quicksettings.desktop; do
   install -Dm644 "$TOOLS/$desktop" "$R/usr/share/applications/$desktop"
 done
 install -Dm644 "$TOOLS/armos-first-run-autostart.desktop" \
   "$R/etc/xdg/autostart/armos-first-run.desktop"
+install -Dm644 "$TOOLS/armos-welcome-autostart.desktop" \
+  "$R/etc/xdg/autostart/armos-welcome.desktop"
+# /usr/share/doc is trimmed in the slim live image, so keep a copy under
+# /usr/share/armos where the Welcome button can always find it.
+install -Dm644 "$TOOLS/docs/README" "$R/usr/share/doc/armos/README"
+install -Dm644 "$TOOLS/docs/README" "$R/usr/share/armos/README"
+install -Dm644 "$TOOLS/50-armos-live.rules" \
+  "$R/etc/polkit-1/rules.d/50-armos-live.rules"
 
 chown -R 0:0 \
   "$R/usr/share/backgrounds/armos" \
   "$R/usr/bin/armos-desktop-defaults" \
   "$R/usr/bin/armos" \
+  "$R/usr/bin/armos-center" \
+  "$R/usr/bin/armos-store" \
+  "$R/usr/bin/armos-updater" \
+  "$R/usr/bin/armos-welcome" \
   "$R/usr/bin/armos-desklet" \
+  "$R/usr/bin/armos-monitor" \
   "$R/usr/bin/armos-settings" \
   "$R/usr/bin/armos-quicksettings" \
   "$R/usr/bin/armos-first-run" \
-  "$R/usr/share/applications/armos-settings.desktop" \
-  "$R/usr/share/applications/armos-quicksettings.desktop" \
+  "$R/usr/share/applications" \
+  "$R/usr/share/doc/armos" \
+  "$R/etc/polkit-1/rules.d" \
   "$R/usr/lib/armos/armos_common.py" \
   "$R/etc/gtk-3.0/gtk.css" \
   "$R/etc/xdg/autostart" \
   "$R/etc/xdg/xfce4/xfconf/xfce-perchannel-xml" \
   "$R/etc/xdg/mimeapps.list" \
   "$R/usr/share/armos/config" \
+  "$R/usr/share/armos/README" \
   "$R/boot/grub/themes/armos" \
   "$R/usr/share/plymouth/themes/armos"
 

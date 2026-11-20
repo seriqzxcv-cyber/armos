@@ -227,6 +227,8 @@ set menu_color_highlight=blue/black
 insmod all_video
 insmod gfxterm
 insmod gfxmenu
+insmod font
+insmod png
 set gfxmode=1920x1080,1280x720,auto
 
 search --no-floppy --set=root --label $ISO_LABEL
@@ -241,11 +243,11 @@ if [ -f /boot/grub/themes/armos/fonts/terminal-14.pf2 ]; then
     loadfont /boot/grub/themes/armos/fonts/terminal-14.pf2
 fi
 
+terminal_output gfxterm
+
 if [ -f /boot/grub/themes/armos/theme.txt ]; then
     set theme=/boot/grub/themes/armos/theme.txt
 fi
-
-terminal_output gfxterm
 
 menuentry "ARMOS 1.0 GEN — Live" {
     linux /boot/vmlinuz root=live:CDLABEL=$ISO_LABEL rd.live.image rd.live.overlay.overlayfs=1 console=tty0 console=ttyS0,115200 quiet splash loglevel=4 plymouth.ignore-serial-consoles

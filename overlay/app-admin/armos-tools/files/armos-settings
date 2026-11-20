@@ -89,22 +89,31 @@ class Settings(Gtk.Application):
         content.pack_start(section("Акцент"), False, False, 0)
         accents = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         current = common.get_accent()
+        accent_buttons = {}
+        group = None
         for name, color in ACCENTS:
-            button = Gtk.ToggleButton(label=name)
+            button = Gtk.RadioButton(label=name, group=group)
+            if group is None:
+                group = button
             button.set_active(color.lower() == current.lower())
+            accent_buttons[color.lower()] = button
             button.connect("clicked", lambda *_btn, c=color: apply_accent(c))
             accents.pack_start(button, False, False, 0)
         content.pack_start(accents, False, False, 0)
 
         def apply_accent(color):
+            nonlocal current
             try:
                 common.set_accent(color)
             except (OSError, ValueError) as exc:
                 common.message(window, str(exc), Gtk.MessageType.ERROR)
+                accent_buttons.get(current.lower(), group).set_active(True)
                 return
+            current = color
+            common.apply_theme()
             common.message(
                 window,
-                "Акцент изменён. Перезапустите приложения ARMOS, "
+                "Акцент применён. Перезапустите уже открытые приложения, "
                 "чтобы увидеть новый цвет.",
             )
 
@@ -112,15 +121,21 @@ class Settings(Gtk.Application):
         content.pack_start(section("Тема интерфейса"), False, False, 0)
         themes = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         active_theme = common.xfconf_get("xsettings", "/Net/ThemeName", "Arc-Dark")
+        theme_group = None
         for name, value in THEMES:
-            button = Gtk.ToggleButton(label=name)
+            button = Gtk.RadioButton(label=name, group=theme_group)
+            if theme_group is None:
+                theme_group = button
             button.set_active(value == active_theme)
-            button.connect(
-                "clicked",
-                lambda *_btn, v=value: common.xfconf_set("xsettings", "/Net/ThemeName", v),
-            )
+            button.connect("clicked", lambda *_btn, v=value: apply_theme(v))
             themes.pack_start(button, False, False, 0)
         content.pack_start(themes, False, False, 0)
+
+        def apply_theme(value):
+            if not common.xfconf_set("xsettings", "/Net/ThemeName", value):
+                common.message(
+                    window, "Не удалось изменить тему интерфейса.", Gtk.MessageType.ERROR
+                )
 
         # --- scale and cursor ---
         content.pack_start(section("Масштаб и курсор"), False, False, 0)

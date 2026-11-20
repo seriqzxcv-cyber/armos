@@ -12,7 +12,8 @@ parallel. See [docs/STATUS.md](docs/STATUS.md) for the full checklist.
 - XFCE desktop, Russian locale by default.
 - Live mode with optional persistence.
 - Calamares installer (BIOS/UEFI, ext4/btrfs, LUKS).
-- ARMOS Welcome / Center / Store / Updater.
+- ARMOS apps: Welcome, Center, Store, Updater, Settings, Monitor, Quick Settings,
+  First Run and the `armos` CLI (`armos help`).
 - Custom branding: GRUB, Plymouth, LightDM, XFCE, wallpapers, icons.
 - Base apps: Firefox, LibreOffice, VLC, GIMP, Thunar, terminal, archive tools, PDF, screenshots.
 

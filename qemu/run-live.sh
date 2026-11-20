@@ -7,6 +7,7 @@
 #   CPUS=4          vCPU count
 #   PERSIST=path    raw image attached as a second disk (persistence tests)
 #   HEADLESS=1      no graphical window (serial console only)
+#   SSH_PORT=n      forward host port n to guest port 22 (for scripted checks)
 set -euo pipefail
 
 PROJECT_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -16,6 +17,10 @@ ISO="${ISO:-$(ls -t "$PROJECT_ROOT"/out/*.iso 2>/dev/null | head -1 || true)}"
 
 MEM="${MEM:-4096}"
 CPUS="${CPUS:-4}"
+NETDEV="user,id=net0"
+if [[ -n "${SSH_PORT:-}" ]]; then
+  NETDEV="user,id=net0,hostfwd=tcp:127.0.0.1:${SSH_PORT}-:22"
+fi
 
 ACCEL=()
 if [[ -r /dev/kvm ]]; then
@@ -80,7 +85,7 @@ exec qemu-system-x86_64 \
   -cdrom "$ISO" \
   -boot d \
   -device virtio-rng-pci \
-  -netdev user,id=net0 -device virtio-net-pci,netdev=net0 \
+  -netdev "$NETDEV" -device virtio-net-pci,netdev=net0 \
   "${DISPLAY_ARGS[@]}" \
   "${SERIAL_ARGS[@]}" \
   "${MONITOR_ARGS[@]}" \

@@ -30,8 +30,24 @@ def get_accent():
     return DEFAULT_ACCENT
 
 
+ACCENT_BEGIN = "/* BEGIN ARMOS ACCENT (managed by ARMOS Settings) */"
+ACCENT_END = "/* END ARMOS ACCENT */"
+
+
+def accent_css(value):
+    return (
+        ACCENT_BEGIN + "\n"
+        "@define-color theme_selected_bg_color {0};\n"
+        "@define-color theme_focus_bg_color {0};\n"
+        "@define-color accent_color {0};\n"
+        "selection, *:selected {{ background-color: {0}; color: #FFFFFF; }}\n"
+        "progressbar progress, levelbar block.filled {{ background-color: {0}; }}\n"
+        + ACCENT_END
+    ).format(value)
+
+
 def set_accent(value):
-    """Persist a new accent and add a GTK3 override for running applications."""
+    """Persist a new accent, replacing only the managed block in gtk.css."""
     if not (len(value) == 7 and value.startswith("#")):
         raise ValueError("accent must be #RRGGBB")
     int(value[1:], 16)
@@ -40,16 +56,22 @@ def set_accent(value):
         fh.write(value + "\n")
     gtk_dir = os.path.expanduser("~/.config/gtk-3.0")
     os.makedirs(gtk_dir, exist_ok=True)
-    with open(os.path.join(gtk_dir, "gtk.css"), "w", encoding="utf-8") as fh:
-        fh.write(
-            "/* ARMOS accent override */\n"
-            "@define-color theme_selected_bg_color {0};\n"
-            "@define-color theme_focus_bg_color {0};\n"
-            "@define-color accent_color {0};\n"
-            "selection, *:selected {{ background-color: {0}; color: #FFFFFF; }}\n"
-            "progressbar progress, levelbar block.filled {{ background-color: {0}; }}\n"
-            .format(value)
-        )
+    css_path = os.path.join(gtk_dir, "gtk.css")
+    try:
+        with open(css_path, "r", encoding="utf-8") as fh:
+            existing = fh.read()
+    except OSError:
+        existing = ""
+    block = accent_css(value)
+    start = existing.find(ACCENT_BEGIN)
+    end = existing.find(ACCENT_END)
+    if start >= 0 and end >= start + len(ACCENT_BEGIN):
+        end += len(ACCENT_END)
+        updated = existing[:start] + block + existing[end:]
+    else:
+        updated = existing.rstrip() + "\n\n" + block + "\n"
+    with open(css_path, "w", encoding="utf-8") as fh:
+        fh.write(updated)
     return value
 
 
@@ -62,17 +84,20 @@ TEXT = "#E6EAF0"
 MUTED = "#8B929D"
 BORDER = "#2A2D33"
 
-CSS = f"""
+
+def build_css(accent=None):
+    accent = accent or get_accent()
+    return f"""
 window, dialog {{ background-color: {BACKGROUND}; color: {TEXT}; }}
 label {{ color: {TEXT}; }}
 .title {{ font-size: 26px; font-weight: 700; }}
 .subtitle {{ color: {MUTED}; font-size: 12px; }}
-.accent {{ color: {ACCENT}; }}
+.accent {{ color: {accent}; }}
 .tile {{
     background-color: {SURFACE}; border: 1px solid {BORDER};
     border-radius: 8px; padding: 16px;
 }}
-.tile:hover {{ border-color: {ACCENT}; background-color: {SURFACE_2}; }}
+.tile:hover {{ border-color: {accent}; background-color: {SURFACE_2}; }}
 .tile-title {{ font-size: 15px; font-weight: 600; }}
 .tile-subtitle {{ color: {MUTED}; font-size: 11px; }}
 button {{
@@ -80,12 +105,15 @@ button {{
     border: 1px solid {BORDER}; border-radius: 6px;
     padding: 8px 14px; color: {TEXT};
 }}
-button:hover {{ border-color: {ACCENT}; }}
-button.suggested {{ background-color: {ACCENT}; color: #0B1220; }}
+button:hover {{ border-color: {accent}; }}
+button.suggested {{ background-color: {accent}; color: #0B1220; }}
 button.suggested:hover {{ background-color: #3F7BE0; }}
 entry {{ background-color: {SURFACE}; border: 1px solid {BORDER}; border-radius: 6px; }}
 textview, textview text {{ background-color: #0A0D12; color: {TEXT}; }}
 """
+
+
+CSS = build_css()
 
 _windows = set()
 
@@ -100,7 +128,7 @@ def apply_theme():
     screen = Gdk.Screen.get_default()
     if screen is not None:
         provider = Gtk.CssProvider()
-        provider.load_from_data(CSS.encode("utf-8"))
+        provider.load_from_data(build_css().encode("utf-8"))
         Gtk.StyleContext.add_provider_for_screen(
             screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
@@ -224,14 +252,18 @@ class TaskWindow(Gtk.Window):
         return False
 
     def _exit(self, pid, status):
-        self._finish(status)
+        # GLib passes the raw waitpid status; callers expect an exit code.
+        try:
+            self._finish(os.waitstatus_to_exitcode(status))
+        except (ValueError, AttributeError):
+            self._finish(os.WEXITSTATUS(status) if os.WIFEXITED(status) else 1)
 
     def _finish(self, status):
         if self._finished:
             return
         self._finished = True
         self.spinner.stop()
-        if status is not None:
+        if status is not None and status != 0:
             self._append("\n[код завершения: {}]\n".format(status))
         self.cancel.set_label("Закрыть")
         self.cancel.disconnect_by_func(self._cancel)
@@ -239,8 +271,8 @@ class TaskWindow(Gtk.Window):
         if self._on_done is not None:
             try:
                 self._on_done(status)
-            except Exception:
-                pass
+            except Exception as exc:
+                self._append("\n[ошибка обработчика: {}]\n".format(exc))
         self._proc = None
 
     def _on_delete(self, *_):

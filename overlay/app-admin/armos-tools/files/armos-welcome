@@ -126,7 +126,7 @@ class Welcome(Gtk.Application):
                 "Документация",
                 "Руководства и заметки о сборке",
                 "help-browser",
-                lambda *_: common.launch(["xdg-open", "/usr/share/doc/armos"]),
+                lambda *_: common.launch(["xdg-open", "/usr/share/armos/README"]),
             ),
             action_button(
                 "Закрыть",

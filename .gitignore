@@ -4,6 +4,7 @@ build/rootfs/
 build/kernel-install/
 build/kernel-work/
 build/live/
+build/qemu/
 build/*.img
 out/*
 !out/.gitkeep

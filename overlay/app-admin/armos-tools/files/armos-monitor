@@ -1,0 +1,318 @@
+#!/usr/bin/env python3
+"""ARMOS Monitor — live CPU/RAM/network/disk/process viewer (GTK3).
+
+Uses only /proc, /sys and standard library calls: no external monitoring
+daemon or privileged helper is required.
+"""
+
+import datetime
+import glob
+import os
+import signal
+import sys
+
+sys.path.insert(0, "/usr/lib/armos")
+
+import gi  # noqa: E402
+
+gi.require_version("Gtk", "3.0")
+from gi.repository import GLib, Gtk  # noqa: E402
+
+import armos_common as common  # noqa: E402
+
+HZ = os.sysconf("SC_CLK_TCK") if hasattr(os, "sysconf") else 100
+PAGE = os.sysconf("SC_PAGE_SIZE") if hasattr(os, "sysconf") else 4096
+REFRESH_MS = 2000
+
+
+def _read_cpu():
+    try:
+        with open("/proc/stat", "r", encoding="ascii") as fh:
+            values = [int(v) for v in fh.readline().split()[1:]]
+        idle = values[3] + (values[4] if len(values) > 4 else 0)
+        return sum(values), idle
+    except (OSError, ValueError, IndexError):
+        return 0, 0
+
+
+def _read_meminfo():
+    data = {}
+    try:
+        with open("/proc/meminfo", "r", encoding="ascii") as fh:
+            for line in fh:
+                parts = line.split()
+                if len(parts) >= 2:
+                    data[parts[0].rstrip(":")] = int(parts[1])
+    except OSError:
+        pass
+    return data
+
+
+def _read_disk():
+    try:
+        stat = os.statvfs("/")
+        return 100.0 * (stat.f_blocks - stat.f_bfree) / max(stat.f_blocks, 1)
+    except OSError:
+        return 0.0
+
+
+def _read_net():
+    total = 0
+    try:
+        with open("/proc/net/dev", "r", encoding="ascii") as fh:
+            for line in fh.readlines()[2:]:
+                fields = line.split()
+                if len(fields) >= 10:
+                    total += int(fields[1]) + int(fields[9])
+    except (OSError, ValueError):
+        pass
+    return total
+
+
+def _read_temp():
+    for path in sorted(glob.glob("/sys/class/thermal/thermal_zone*/temp")):
+        try:
+            with open(path, "r", encoding="ascii") as fh:
+                value = int(fh.read().strip()) / 1000.0
+            if -20 < value < 120:
+                return value
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def _uptime():
+    try:
+        with open("/proc/uptime", "r", encoding="ascii") as fh:
+            return int(float(fh.readline().split()[0]))
+    except (OSError, ValueError, IndexError):
+        return 0
+
+
+def _processes():
+    """Return {pid: (ticks, rss_bytes, name, state)} for readable processes."""
+    result = {}
+    for entry in os.listdir("/proc"):
+        if not entry.isdigit():
+            continue
+        try:
+            with open("/proc/{}/stat".format(entry), "r", encoding="utf-8", errors="replace") as fh:
+                raw = fh.read()
+            end = raw.rfind(")")
+            if end < 0:
+                continue
+            name = raw[raw.find("(") + 1:end]
+            fields = raw[end + 2:].split()
+            state = fields[0]
+            ticks = int(fields[11]) + int(fields[12])
+            rss = int(fields[21]) * PAGE
+            try:
+                with open("/proc/{}/cmdline".format(entry), "rb") as fh:
+                    cmd = fh.read().replace(b"\0", b" ").decode("utf-8", "replace").strip()
+            except OSError:
+                cmd = ""
+            result[int(entry)] = (ticks, rss, cmd or name, state)
+        except (OSError, ValueError, IndexError):
+            continue
+    return result
+
+
+def _fmt_bytes(value):
+    for unit in ("Б", "КБ", "МБ", "ГБ"):
+        if value < 1024:
+            return "{:.1f} {}".format(value, unit)
+        value /= 1024
+    return "{:.1f} ТБ".format(value)
+
+
+class Monitor(Gtk.Window):
+    def __init__(self):
+        super().__init__(title="Монитор ARMOS")
+        self.set_default_size(940, 640)
+        self.set_position(Gtk.WindowPosition.CENTER)
+        common.apply_theme()
+        common._keep(self)
+
+        self.cpu_prev = _read_cpu()
+        self.net_prev = _read_net()
+        self.proc_prev = _processes()
+        self.last_tick = datetime.datetime.now()
+
+        header = Gtk.HeaderBar(title="Монитор ARMOS", subtitle="Ресурсы и процессы",
+                               show_close_button=True)
+        self.set_titlebar(header)
+        refresh = Gtk.Button(label="Обновить")
+        refresh.connect("clicked", lambda *_: self._tick())
+        header.pack_start(refresh)
+        kill = Gtk.Button(label="Завершить процесс")
+        kill.connect("clicked", self._kill)
+        header.pack_end(kill)
+
+        notebook = Gtk.Notebook()
+        self.add(notebook)
+        notebook.append_page(self._overview_page(), Gtk.Label(label="Обзор"))
+        notebook.append_page(self._process_page(), Gtk.Label(label="Процессы"))
+
+        self.show_all()
+        GLib.timeout_add(REFRESH_MS, self._tick)
+        self._tick()
+
+    def _bar_row(self, grid, row, name):
+        label = Gtk.Label(label=name, xalign=0)
+        label.get_style_context().add_class("tile-title")
+        bar = Gtk.ProgressBar()
+        bar.set_hexpand(True)
+        value = Gtk.Label(label="—", xalign=1)
+        value.set_width_chars(12)
+        grid.attach(label, 0, row, 1, 1)
+        grid.attach(bar, 1, row, 1, 1)
+        grid.attach(value, 2, row, 1, 1)
+        return bar, value
+
+    def _info_row(self, grid, row, name):
+        label = Gtk.Label(label=name, xalign=0)
+        label.get_style_context().add_class("tile-title")
+        value = Gtk.Label(label="—", xalign=1)
+        value.set_hexpand(True)
+        grid.attach(label, 0, row, 1, 1)
+        grid.attach(value, 1, row, 2, 1)
+        return value
+
+    def _overview_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        page.set_border_width(20)
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.get_style_context().add_class("tile")
+        page.pack_start(card, False, False, 0)
+
+        grid = Gtk.Grid(column_spacing=14, row_spacing=10)
+        card.pack_start(grid, False, False, 0)
+        self.cpu_bar, self.cpu_value = self._bar_row(grid, 0, "ЦП")
+        self.ram_bar, self.ram_value = self._bar_row(grid, 1, "ОЗУ")
+        self.swap_bar, self.swap_value = self._bar_row(grid, 2, "SWAP")
+        self.disk_bar, self.disk_value = self._bar_row(grid, 3, "Диск /")
+        self.net_value = self._info_row(grid, 4, "Сеть")
+        self.temp_value = self._info_row(grid, 5, "Температура")
+        self.load_value = self._info_row(grid, 6, "Средняя нагрузка")
+        self.uptime_value = self._info_row(grid, 7, "Аптайм")
+        self.kernel_value = self._info_row(grid, 8, "Ядро")
+
+        note = Gtk.Label(
+            label="Данные читаются непосредственно из /proc и /sys.", xalign=0
+        )
+        note.get_style_context().add_class("subtitle")
+        page.pack_start(note, False, False, 0)
+        return page
+
+    def _process_page(self):
+        page = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        page.set_border_width(12)
+        scroller = Gtk.ScrolledWindow()
+        scroller.set_vexpand(True)
+        self.store = Gtk.ListStore(int, str, float, float, str)
+        self.view = Gtk.TreeView(model=self.store)
+        for index, title in enumerate(("PID", "Процесс", "ЦП %", "ОЗУ %", "Состояние")):
+            renderer = Gtk.CellRendererText()
+            column = Gtk.TreeViewColumn(title, renderer, text=index)
+            column.set_resizable(True)
+            column.set_min_width(70)
+            self.view.append_column(column)
+        self.view.set_search_column(1)
+        self.store.set_sort_column_id(2, Gtk.SortType.DESCENDING)
+        scroller.add(self.view)
+        page.pack_start(scroller, True, True, 0)
+        return page
+
+    def _kill(self, *_):
+        model, treeiter = self.view.get_selection().get_selected()
+        if treeiter is None:
+            common.message(self, "Выберите процесс в списке.")
+            return
+        pid = model[treeiter][0]
+        if pid == os.getpid():
+            common.message(self, "Нельзя завершить сам монитор.", Gtk.MessageType.WARNING)
+            return
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError as exc:
+            common.message(self, "Не удалось завершить процесс: {}".format(exc),
+                           Gtk.MessageType.ERROR)
+        else:
+            common.message(self, "Процесс {} получил SIGTERM.".format(pid))
+        self._tick()
+
+    def _tick(self):
+        now = datetime.datetime.now()
+        elapsed = max((now - self.last_tick).total_seconds(), 0.1)
+        self.last_tick = now
+
+        total, idle = _read_cpu()
+        prev_total, prev_idle = self.cpu_prev
+        dt = max(total - prev_total, 1)
+        di = max(idle - prev_idle, 0)
+        cpu = max(0.0, min(100.0, 100.0 * (dt - di) / dt))
+        self.cpu_prev = (total, idle)
+
+        mem = _read_meminfo()
+        total_mem = mem.get("MemTotal", 0)
+        avail = mem.get("MemAvailable", mem.get("MemFree", 0))
+        ram = 100.0 * (total_mem - avail) / max(total_mem, 1)
+        swap_total = mem.get("SwapTotal", 0)
+        swap_free = mem.get("SwapFree", swap_total)
+        swap = 100.0 * (swap_total - swap_free) / max(swap_total, 1) if swap_total else 0.0
+        disk = _read_disk()
+
+        for bar, value, fraction, text in (
+            (self.cpu_bar, self.cpu_value, cpu / 100.0, "{:.0f}%".format(cpu)),
+            (self.ram_bar, self.ram_value, ram / 100.0,
+             "{} / {}".format(_fmt_bytes((total_mem - avail) * 1024),
+                              _fmt_bytes(total_mem * 1024))),
+            (self.swap_bar, self.swap_value, swap / 100.0,
+             "{} / {}".format(_fmt_bytes((swap_total - swap_free) * 1024),
+                              _fmt_bytes(swap_total * 1024))),
+            (self.disk_bar, self.disk_value, disk / 100.0, "{:.0f}%".format(disk)),
+        ):
+            bar.set_fraction(max(0.0, min(1.0, fraction)))
+            value.set_text(text)
+
+        net = _read_net()
+        rate = max(net - self.net_prev, 0) / elapsed
+        self.net_prev = net
+        self.net_value.set_text(
+            "↓ {} / с   ↑ {} / с".format(_fmt_bytes(rate), "—")
+        )
+        temp = _read_temp()
+        self.temp_value.set_text("{:.0f} °C".format(temp) if temp is not None else "нет датчика")
+        try:
+            with open("/proc/loadavg", "r", encoding="ascii") as fh:
+                load = " ".join(fh.read().split()[:3])
+        except OSError:
+            load = "—"
+        self.load_value.set_text(load)
+
+        secs = _uptime()
+        days, rem = divmod(secs, 86400)
+        hours, rem = divmod(rem, 3600)
+        self.uptime_value.set_text("{} д {} ч {} мин".format(days, hours, rem // 60))
+        try:
+            with open("/proc/sys/kernel/osrelease", "r", encoding="ascii") as fh:
+                kernel = fh.read().strip()
+        except OSError:
+            kernel = os.uname().release
+        self.kernel_value.set_text(kernel)
+
+        current = _processes()
+        self.store.clear()
+        for pid, (ticks, rss, name, state) in current.items():
+            prev_ticks = self.proc_prev.get(pid, (ticks,))[0]
+            cpu_proc = 100.0 * max(ticks - prev_ticks, 0) / HZ / elapsed
+            mem_proc = 100.0 * rss / max(total_mem * 1024, 1)
+            self.store.append([pid, name[:80], round(cpu_proc, 1), round(mem_proc, 1), state])
+        self.proc_prev = current
+        return True
+
+
+if __name__ == "__main__":
+    app = Monitor()
+    app.connect("destroy", Gtk.main_quit)
+    Gtk.main()

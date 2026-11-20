@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=ARMOS System Monitor
+Name[ru]=Монитор ARMOS
+Comment=CPU, memory, network, disk and processes
+Comment[ru]=ЦП, память, сеть, диск и процессы
+Exec=armos-monitor
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;XFCE;
+StartupNotify=true

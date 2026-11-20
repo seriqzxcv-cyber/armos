@@ -1,0 +1,10 @@
+/* Live-session convenience: allow the live user to run pkexec helpers
+ * (ARMOS Store, Updater, First Run) without a password prompt.
+ * This rule has no effect on installed systems, where the live account is
+ * removed by Calamares. */
+polkit.addRule(function(action, subject) {
+    if (action.id === "org.freedesktop.policykit.exec" &&
+        subject.user === "live" && subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});

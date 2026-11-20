@@ -21,7 +21,7 @@ def about(window):
         "Source-based Linux на базе Gentoo.\n"
         "XFCE, OpenRC, Portage и фирменные приложения ARMOS."
     )
-    dialog.set_website("https://armos.local/")
+    dialog.set_website("https://github.com/seriqzxcv-cyber/armos")
     dialog.set_license_type(Gtk.License.GPL_3_0)
     logo = common.logo_path()
     if logo:
