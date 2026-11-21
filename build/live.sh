@@ -130,7 +130,7 @@ if [[ "$LIVE_SLIM" == "1" ]]; then
     usr/share/gtk-doc usr/share/cmake usr/share/gcc-data \
     usr/share/binutils-data usr/share/clc usr/share/mythes \
     usr/share/vulkan usr/share/qt6 usr/share/help \
-    usr/share/icons/Papirus usr/share/icons/Papirus-Light \
+    usr/share/icons/Papirus-Light \
     usr/share/icons/breeze usr/share/icons/breeze-dark \
     usr/share/icons/HighContrast usr/share/icons/AdwaitaLegacy \
     usr/share/icons/elementaryXubuntu-dark \
@@ -139,6 +139,19 @@ if [[ "$LIVE_SLIM" == "1" ]]; then
     for path in "$ROOTFS"/$p; do
       [[ -e "$path" ]] && EXCLUDES+=("${path#$ROOTFS/}")
     done
+  done
+
+  # Papirus-Dark is a symlink theme that points into Papirus. Dropping Papirus
+  # wholesale breaks every icon (GTK even aborts on a missing image-missing
+  # fallback). Keep the two sizes used by the desktop and trim the rest.
+  for d in "$ROOTFS"/usr/share/icons/Papirus/*/; do
+    [[ -d "$d" ]] || continue
+    n="${d%/}"
+    n="${n##*/}"
+    case "$n" in
+      24x24|48x48) ;;
+      *) EXCLUDES+=("usr/share/icons/Papirus/$n") ;;
+    esac
   done
 
   for d in "$ROOTFS"/usr/share/locale/*; do

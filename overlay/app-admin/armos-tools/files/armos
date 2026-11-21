@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """ARMOS CLI — small command-line companion to the ARMOS desktop."""
 
+import glob
 import os
 import platform
 import shutil
@@ -23,6 +24,8 @@ HELP = """ARMOS 1.0 «GEN» — команды:
   armos center                открыть Центр ARMOS
   armos monitor               открыть монитор ресурсов
   armos store                 открыть магазин приложений
+  armos repos [sync]          состояние дерева Portage / синхронизация
+  armos persist               состояние сохранения live-сессии
   armos help                  эта справка
 """
 
@@ -74,6 +77,50 @@ def status():
         print("{:<14} {}".format(name + ":", "работает" if running else "не запущен"))
 
 
+def repos(args):
+    present = common.portage_tree_present()
+    print("Дерево Portage: {}".format("загружено" if present else "отсутствует"))
+    for root in sorted(glob.glob("/var/db/repos/*")):
+        print("  " + root)
+    if not args:
+        return 0
+    if args[0] != "sync":
+        print("Использование: armos repos [sync]", file=sys.stderr)
+        return 2
+    if not present:
+        print("Внимание: в slim-образе дерево Portage отсутствует; синхронизация "
+              "потребует места и времени.", file=sys.stderr)
+    argv = ["emerge", "--sync"]
+    if os.geteuid() != 0:
+        argv = ["pkexec"] + argv
+    try:
+        return subprocess.call(argv)
+    except OSError as exc:
+        print("Не удалось запустить синхронизацию: {}".format(exc), file=sys.stderr)
+        return 1
+
+
+def persist():
+    cmdline = ""
+    try:
+        with open("/proc/cmdline", "r", encoding="ascii") as fh:
+            cmdline = fh.read()
+    except OSError:
+        pass
+    option = next(
+        (part for part in cmdline.split() if part.startswith("rd.live.overlay=")), "—"
+    )
+    print("Параметр сохранения: {}".format(option))
+    upper = os.path.realpath("/run/overlayfs")
+    print("Верхний слой:        {}".format(upper if os.path.isdir(upper) else "не активен"))
+    if os.path.isdir(upper):
+        stat = os.statvfs(upper)
+        free = stat.f_bavail * stat.f_frsize / 1024 ** 3
+        print("Свободно в слое:     {:.2f} ГБ".format(free))
+    print("Live-сессия:         {}".format("да" if common.is_live() else "нет"))
+    return 0
+
+
 def main(argv):
     if not argv or argv[0] in ("help", "-h", "--help"):
         print(HELP, end="")
@@ -84,6 +131,10 @@ def main(argv):
         info()
     elif command == "status":
         status()
+    elif command == "repos":
+        return repos(args)
+    elif command == "persist":
+        return persist()
     elif command == "theme":
         if not args or args[0] not in ("dark", "light"):
             print("Использование: armos theme dark|light", file=sys.stderr)

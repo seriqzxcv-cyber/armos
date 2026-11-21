@@ -73,6 +73,23 @@ class Store(Gtk.Application):
         hint.get_style_context().add_class("subtitle")
         outer.pack_start(hint, False, False, 0)
 
+        # The slim live image ships no Portage tree: explain it and offer a fix
+        # instead of silently offering installs that can only fail.
+        self.banner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        self.banner.get_style_context().add_class("tile")
+        self.banner_text = Gtk.Label(
+            label="Дерево Portage не загружено. Синхронизируйте его, чтобы "
+            "устанавливать пакеты (в live-сессии нужно достаточно свободного места).",
+            xalign=0,
+        )
+        self.banner_text.set_line_wrap(True)
+        self.banner_text.set_hexpand(True)
+        self.banner.pack_start(self.banner_text, True, True, 0)
+        sync = Gtk.Button(label="Синхронизировать")
+        sync.connect("clicked", lambda *_: self._sync_tree())
+        self.banner.pack_start(sync, False, False, 0)
+        outer.pack_start(self.banner, False, False, 0)
+
         filters = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         self.search = Gtk.SearchEntry()
         self.search.set_placeholder_text("Поиск приложений…")
@@ -116,11 +133,14 @@ class Store(Gtk.Application):
 
         query = self.search.get_text().strip().lower()
         category = self.category.get_active_text()
+        has_tree = common.portage_tree_present()
+        self.banner.set_visible(not has_tree)
         shown = 0
         total_installed = 0
 
         for atom, name, desc, cat in CATALOG:
             is_installed = common.installed(atom)
+            available = common.atom_available(atom) if not is_installed else True
             if is_installed:
                 total_installed += 1
             if category != "Все" and cat != category:
@@ -128,14 +148,34 @@ class Store(Gtk.Application):
             haystack = " ".join((name, desc, atom, cat)).lower()
             if query and query not in haystack:
                 continue
-            self._add_row(atom, name, desc, cat, is_installed)
+            self._add_row(atom, name, desc, cat, is_installed, available)
             shown += 1
 
+        tree = "дерево Portage загружено" if has_tree else "дерево Portage отсутствует"
         self.status.set_text(
-            "Показано: {} • установлено в каталоге: {}".format(shown, total_installed)
+            "{} • показано: {} • установлено в каталоге: {}".format(
+                tree, shown, total_installed
+            )
         )
 
-    def _add_row(self, atom, name, desc, category, is_installed):
+    def _sync_tree(self):
+        common.TaskWindow(
+            "Синхронизация Portage",
+            ["emerge", "--sync"],
+            parent=self.window,
+            on_done=lambda status: (
+                self.refresh(),
+                common.message(
+                    self.window,
+                    "Дерево Portage синхронизировано." if status == 0 else
+                    "Не удалось синхронизировать дерево Portage. "
+                    "Проверьте соединение и свободное место.",
+                    Gtk.MessageType.INFO if status == 0 else Gtk.MessageType.ERROR,
+                ),
+            ),
+        )
+
+    def _add_row(self, atom, name, desc, category, is_installed, available=True):
         row = Gtk.ListBoxRow()
         row.name = name
         row.set_activatable(False)
@@ -162,7 +202,16 @@ class Store(Gtk.Application):
             button = Gtk.Button(label="Удалить")
             button.connect("clicked", lambda *_: self._remove(atom, name))
         else:
-            button = Gtk.Button(label="Установить")
+            if available is not True:
+                badge = Gtk.Label(
+                    label="нет в репозитории" if available is False else "нужна синхронизация"
+                )
+                badge.get_style_context().add_class("subtitle")
+                box.pack_start(badge, False, False, 0)
+            button = Gtk.Button(
+                label="Установить" if available is True else "Недоступно"
+            )
+            button.set_sensitive(available is True)
             button.get_style_context().add_class("suggested")
             button.connect("clicked", lambda *_: self._install(atom, name))
         box.pack_start(button, False, False, 0)

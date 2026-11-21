@@ -13,6 +13,20 @@ from gi.repository import Gtk  # noqa: E402
 import armos_common as common  # noqa: E402
 
 
+def persistence(window):
+    text, error = common.run(["armos", "persist"])
+    dialog = Gtk.MessageDialog(
+        transient_for=window,
+        flags=0,
+        message_type=Gtk.MessageType.INFO,
+        buttons=Gtk.ButtonsType.CLOSE,
+        text="Сохранение live-сессии",
+    )
+    dialog.format_secondary_text(text or error or "Нет сведений о сохранении.")
+    dialog.run()
+    dialog.destroy()
+
+
 def about(window):
     dialog = Gtk.AboutDialog(transient_for=window, modal=True)
     dialog.set_program_name("ARMOS")
@@ -163,6 +177,12 @@ class Center(Gtk.Application):
                 "Мастер начальной настройки ARMOS",
                 "system-setup",
                 run(["armos-first-run"]),
+            ),
+            (
+                "Сохранение сессии",
+                "Состояние ARMOS_PERSIST и свободное место",
+                "drive-harddisk",
+                lambda: persistence(window),
             ),
             (
                 "О системе",

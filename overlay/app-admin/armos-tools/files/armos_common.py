@@ -154,6 +154,38 @@ def installed(atom):
     return bool(glob.glob(os.path.join("/var/db/pkg", cat, pkg + "-*")))
 
 
+def portage_tree_present():
+    """True when at least one ebuild repository with packages is available."""
+    return any(
+        os.path.isdir(os.path.join(root, "eclass"))
+        for root in glob.glob("/var/db/repos/*")
+    )
+
+
+def atom_available(atom):
+    """Cheap availability check against the local ebuild repositories.
+
+    Returns None when the tree is missing (unknown), otherwise a bool.
+    """
+    if not portage_tree_present():
+        return None
+    cat, pkg = atom.split("/", 1)
+    return bool(glob.glob(os.path.join("/var/db/repos/*", cat, pkg, "*.ebuild")))
+
+
+def run(argv, stdin=None, timeout=8):
+    """Run a local helper and return (stdout, error). Never raises."""
+    try:
+        result = subprocess.run(
+            argv, input=stdin, capture_output=True, text=True, timeout=timeout
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return "", str(exc)
+    if result.returncode != 0:
+        return result.stdout.strip(), result.stderr.strip() or "команда завершилась с ошибкой"
+    return result.stdout.strip(), ""
+
+
 def launch(argv):
     """Launch a desktop application detached from this process."""
     try:

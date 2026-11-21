@@ -89,10 +89,12 @@ class Updater(Gtk.Application):
             synced = time.strftime("%d.%m.%Y %H:%M", time.localtime(stamp))
         except OSError:
             pass
+        if not common.portage_tree_present():
+            state = "дерево Portage отсутствует — нажмите «Синхронизировать»"
+        else:
+            state = "репозиторий обновлён: " + synced
         self.info.set_text(
-            "{} • ядро {} • репозиторий обновлён: {}".format(
-                common.APP_VERSION, kernel, synced
-            )
+            "{} • ядро {} • {}".format(common.APP_VERSION, kernel, state)
         )
 
     def _run(self, title, argv, on_done=None):
@@ -105,7 +107,10 @@ class Updater(Gtk.Application):
         def done(status):
             self._refresh_info()
             text = task.get_text()
-            updates = sum(1 for line in text.splitlines() if line.startswith("[ebuild"))
+            updates = sum(
+                1 for line in text.splitlines()
+                if line.startswith("[ebuild") or line.startswith(">>>")
+            )
             if status == 0:
                 if updates:
                     common.message(
@@ -115,6 +120,13 @@ class Updater(Gtk.Application):
                     )
                 else:
                     common.message(self.window, "Система обновлена: новых пакетов нет.")
+            else:
+                common.message(
+                    self.window,
+                    "Не удалось проверить обновления (код {}).\n"
+                    "Если дерево Portage отсутствует, сначала синхронизируйте его.".format(status),
+                    Gtk.MessageType.ERROR,
+                )
 
         task = self._run("Проверка обновлений", ["emerge", "-puDNv", "@world"], on_done=done)
 
