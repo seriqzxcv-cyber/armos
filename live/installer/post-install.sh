@@ -2,6 +2,12 @@
 # ARMOS post-install hook. Runs inside the target system by Calamares.
 set -eu
 
+echo "[armos] post-install: machine id"
+if [ ! -s /etc/machine-id ]; then
+    cat /proc/sys/kernel/random/uuid | tr -d '-' > /etc/machine-id
+    chmod 444 /etc/machine-id
+fi
+
 echo "[armos] post-install: services"
 for svc in dbus elogind polkitd NetworkManager bluetooth chronyd lightdm; do
     rc-update add "$svc" default 2>/dev/null || true
@@ -21,6 +27,8 @@ fi
 if [ ! -s /etc/hostname ]; then
     echo "armos-pc" > /etc/hostname
 fi
+# OpenRC's hostname service reads conf.d, not /etc/hostname.
+printf 'hostname="%s"\n' "$(cat /etc/hostname)" > /etc/conf.d/hostname
 
 echo "[armos] post-install: initramfs"
 kver=$(ls /lib/modules 2>/dev/null | sort -V | tail -1)
@@ -29,6 +37,13 @@ if [ -n "$kver" ]; then
     ln -sf "vmlinuz-${kver}" /boot/vmlinuz
     ln -sf "initramfs-${kver}.img" /boot/initramfs.img
 fi
+
+echo "[armos] post-install: kernel selection"
+# The slim live image carries no modules for the generic fallback kernel,
+# yet grub-mkconfig sorts by version and would boot it by default. Keep only
+# the custom ARMOS kernel so the installed system runs the one we support.
+rm -f /boot/vmlinuz-*-gentoo-dist-bin /boot/initramfs-*-gentoo-dist-bin.img
+rm -f /boot/initramfs-live.img
 
 echo "[armos] post-install: GRUB configuration"
 if [ -f /etc/default/grub ]; then

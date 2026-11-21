@@ -6,6 +6,7 @@
 #   MEM=4096        RAM in MiB
 #   CPUS=4          vCPU count
 #   PERSIST=path    raw image attached as a second disk (persistence tests)
+#   DISK=path       extra raw disk for installation tests
 #   HEADLESS=1      no graphical window (serial console only)
 #   SSH_PORT=n      forward host port n to guest port 22 (for scripted checks)
 set -euo pipefail
@@ -44,6 +45,10 @@ if [[ -n "${MONITOR_SOCK:-}" ]]; then
 fi
 
 DISK_ARGS=()
+if [[ -n "${DISK:-}" ]]; then
+  [[ -f "$DISK" ]] || { echo "Disk image not found: $DISK" >&2; exit 1; }
+  DISK_ARGS+=(-drive "file=$DISK,format=raw,if=virtio")
+fi
 if [[ -n "${PERSIST:-}" ]]; then
   [[ -f "$PERSIST" ]] || { echo "Persistence image not found: $PERSIST" >&2; exit 1; }
   DISK_ARGS=(-drive "file=$PERSIST,format=raw,if=virtio")

@@ -33,8 +33,12 @@ in_chroot '
   # cache; they are excluded from the squashfs below instead of being deleted.
   rm -rf /var/log/portage /var/log/emerge.log /var/log/emerge-fetch.log
   rm -f /root/.bash_history /home/*/.bash_history
-  rm -f /etc/machine-id
-  : > /etc/machine-id
+  # D-Bus (and therefore XFCE settings/panel) refuses to start with an empty
+  # machine-id. Generate a valid one instead of truncating it.
+  if [[ -f /etc/machine-id ]]; then
+    cat /proc/sys/kernel/random/uuid | tr -d '-' > /etc/machine-id
+    chmod 444 /etc/machine-id
+  fi
   rm -f /etc/ssh/ssh_host_*
   # The live system must not try to fsck its squashfs as a block root.
   if [[ -f /etc/fstab ]]; then
@@ -94,6 +98,9 @@ cp -a "$PROJECT_ROOT/overlay/." "$ROOTFS/var/db/repos/armos/"
 log "Installing live helpers ..."
 install -Dm755 "$PROJECT_ROOT/live/persistence/armos-persistence-init" \
   "$ROOTFS/usr/sbin/armos-persistence-init"
+# Keep the post-install hook in sync even when only the live image is rebuilt.
+install -Dm755 "$PROJECT_ROOT/live/installer/post-install.sh" \
+  "$ROOTFS/usr/local/bin/armos-postinstall"
 
 # The live squashfs is the installed system, so build-tool chains, the Portage
 # tree, unused firmware/locales/fonts/icons and the fallback kernel modules are

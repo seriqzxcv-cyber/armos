@@ -89,7 +89,10 @@ class Welcome(Gtk.Application):
         outer.pack_start(grid, True, True, 0)
 
         def install(_):
-            if not common.launch(["calamares"]):
+            # Calamares needs root to enumerate and modify block devices.
+            # Without pkexec KPMcore sees zero devices and the installer
+            # refuses to continue with "No partitions for installation".
+            if not common.launch(["pkexec", "calamares"]):
                 common.message(window, "Установщик Calamares не найден.", Gtk.MessageType.ERROR)
 
         buttons = []
