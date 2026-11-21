@@ -101,6 +101,16 @@ install -Dm755 "$PROJECT_ROOT/live/persistence/armos-persistence-init" \
 # Keep the post-install hook in sync even when only the live image is rebuilt.
 install -Dm755 "$PROJECT_ROOT/live/installer/post-install.sh" \
   "$ROOTFS/usr/local/bin/armos-postinstall"
+# Refresh the installer configuration too: `make installer` is not necessarily
+# re-run before a live rebuild, and stale Calamares settings silently break
+# installation.
+CAL_SRC="$PROJECT_ROOT/live/calamares"
+CAL_DST="$ROOTFS/etc/calamares"
+if [[ -d "$CAL_DST" ]]; then
+  cp -a "$CAL_SRC/settings.conf" "$CAL_DST/settings.conf"
+  cp -a "$CAL_SRC/modules/." "$CAL_DST/modules/"
+  cp -a "$CAL_SRC/branding/armos/." "$CAL_DST/branding/armos/"
+fi
 
 # The live squashfs is the installed system, so build-tool chains, the Portage
 # tree, unused firmware/locales/fonts/icons and the fallback kernel modules are
